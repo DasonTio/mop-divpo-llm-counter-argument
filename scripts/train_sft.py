@@ -16,6 +16,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import inspect
 import os
 import sys
 from pathlib import Path
@@ -37,16 +38,14 @@ LORA_TARGET_MODULES = [
 
 def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
     import torch
-    from datasets import load_dataset
     from peft import LoraConfig, TaskType, get_peft_model
     from transformers import (
         AutoModelForCausalLM,
         AutoTokenizer,
-        TrainingArguments,
     )
     from trl import SFTConfig, SFTTrainer
 
-    from mop_divpo.hub import MODEL_REPO, SFT_DATA_REPO, push_adapter
+    from mop_divpo.hub import MODEL_REPO, load_sft_dataset, push_adapter
 
     print(f"\n{'='*60}")
     print(f"  Training SFT adapter: {persona}")
@@ -54,12 +53,7 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
 
     # --- Data ---
     print("Loading dataset from HF Hub...", flush=True)
-    ds = load_dataset(
-        SFT_DATA_REPO,
-        data_files={"train": f"{persona}.jsonl"},
-        split="train",
-        token=token,
-    )
+    ds = load_sft_dataset(persona, token=token)
     print(f"  {len(ds)} training examples")
 
     # --- Tokenizer ---
@@ -105,31 +99,40 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
 
     # --- Training ---
     output_dir = f"outputs/adapters/sft/{persona}"
-    sft_config = SFTConfig(
-        output_dir=output_dir,
-        num_train_epochs=args.epochs,
-        per_device_train_batch_size=args.batch_size,
-        gradient_accumulation_steps=args.grad_accum,
-        learning_rate=args.lr,
-        lr_scheduler_type="cosine",
-        warmup_ratio=0.05,
-        weight_decay=0.01,
-        fp16=True,
-        logging_steps=20,
-        save_strategy="epoch",
-        save_total_limit=1,
-        report_to="none",
-        max_seq_length=args.max_seq_len,
-        dataset_text_field="text",
-        packing=False,
-    )
+    sft_kwargs = {
+        "output_dir": output_dir,
+        "num_train_epochs": args.epochs,
+        "per_device_train_batch_size": args.batch_size,
+        "gradient_accumulation_steps": args.grad_accum,
+        "learning_rate": args.lr,
+        "lr_scheduler_type": "cosine",
+        "warmup_ratio": 0.05,
+        "weight_decay": 0.01,
+        "fp16": True,
+        "logging_steps": 20,
+        "save_strategy": "epoch",
+        "save_total_limit": 1,
+        "report_to": "none",
+        "max_seq_length": args.max_seq_len,
+        "dataset_text_field": "text",
+        "packing": False,
+    }
+    sft_params = inspect.signature(SFTConfig).parameters
+    if "max_seq_length" not in sft_params and "max_length" in sft_params:
+        sft_kwargs["max_length"] = sft_kwargs.pop("max_seq_length")
+    sft_config = SFTConfig(**sft_kwargs)
 
-    trainer = SFTTrainer(
-        model=model,
-        args=sft_config,
-        train_dataset=ds,
-        tokenizer=tokenizer,
-    )
+    trainer_kwargs = {
+        "model": model,
+        "args": sft_config,
+        "train_dataset": ds,
+    }
+    tokenizer_arg = "processing_class"
+    if tokenizer_arg not in inspect.signature(SFTTrainer.__init__).parameters:
+        tokenizer_arg = "tokenizer"
+    trainer_kwargs[tokenizer_arg] = tokenizer
+
+    trainer = SFTTrainer(**trainer_kwargs)
 
     print("Training...", flush=True)
     trainer.train()

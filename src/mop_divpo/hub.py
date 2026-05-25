@@ -80,18 +80,24 @@ def push_adapter(adapter_dir: str | Path, stage: str, persona: str, token: str) 
 
 
 def load_sft_dataset(persona: str, token: str | None = None):
-    """Load persona SFT data from HF hub as a HuggingFace Dataset."""
-    from datasets import load_dataset
+    """Load persona SFT data from HF Hub as a chat-style Dataset.
 
-    kwargs = {}
-    if token:
-        kwargs["token"] = token
-    return load_dataset(
-        SFT_DATA_REPO,
-        data_files={"train": f"{persona}.jsonl"},
-        split="train",
-        **kwargs,
+    The public dataset repo has historically contained both stale parquet
+    exports and current JSONL files. Downloading the JSONL directly avoids
+    Hugging Face dataset-card feature casting against old flat schemas.
+    """
+    from datasets import Dataset
+    from huggingface_hub import hf_hub_download
+
+    from mop_divpo.data.sft_records import load_sft_jsonl_records
+
+    path = hf_hub_download(
+        repo_id=SFT_DATA_REPO,
+        filename=f"{persona}.jsonl",
+        repo_type="dataset",
+        token=token or None,
     )
+    return Dataset.from_list(load_sft_jsonl_records(path, persona=persona))
 
 
 def load_divpo_dataset(persona: str, token: str | None = None):

@@ -19,6 +19,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import inspect
 import os
 import sys
 from pathlib import Path
@@ -134,13 +135,18 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
         max_length=512,
     )
 
-    trainer = DPOTrainer(
-        model=model,
-        ref_model=ref_model,
-        args=dpo_config,
-        train_dataset=ds,
-        tokenizer=tokenizer,
-    )
+    trainer_kwargs = {
+        "model": model,
+        "ref_model": ref_model,
+        "args": dpo_config,
+        "train_dataset": ds,
+    }
+    tokenizer_arg = "processing_class"
+    if tokenizer_arg not in inspect.signature(DPOTrainer.__init__).parameters:
+        tokenizer_arg = "tokenizer"
+    trainer_kwargs[tokenizer_arg] = tokenizer
+
+    trainer = DPOTrainer(**trainer_kwargs)
 
     print("Training...", flush=True)
     trainer.train()

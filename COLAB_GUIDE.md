@@ -1,83 +1,217 @@
 # Colab Training Guide
 
-## Full pipeline order
+## Objective
+
+Train 4 persona-specific LoRA adapters (SFT + DivPO) on Qwen2.5-0.5B-Instruct.
+Each adapter learns a distinct cognitive style for counter-argument generation.
+
+## Pipeline
 
 ```
-[Local]  prepare data  →  [Local]  push data to HF  →  [Colab]  train SFT
-→  [Local]  prepare DivPO  →  [Local]  push DivPO to HF  →  [Colab]  train DivPO
+[DONE]   prepare_sft_datasets.py → data on HF Hub
+[Colab]  train_sft.py            → SFT adapters pushed to HF Hub
+[Colab]  prepare_divpo.py        → DivPO preference pairs generated on GPU, pushed to HF Hub
+[Colab]  train_divpo.py          → DivPO adapters pushed to HF Hub
 ```
 
 ---
 
-## Step 1 — Prepare SFT datasets (local)
+## Resources
 
-```bash
-source .venv/bin/activate
-python scripts/prepare_sft_datasets.py --all --limit 5000
-```
+| Resource | URL |
+|---|---|
+| GitHub | https://github.com/DasonTio/mop-divpo-llm-counter-argument |
+| HF Token | Store as a private Colab Secret named `HF_TOKEN` |
+| SFT datasets | https://huggingface.co/datasets/DasonTio/mop-divpo-sft-data |
+| DivPO datasets | https://huggingface.co/datasets/DasonTio/mop-divpo-divpo-data |
+| Adapters | https://huggingface.co/DasonTio/mop-divpo-coauthor |
+| Base model | https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct |
 
-Outputs: `data/processed/sft/{persona}.jsonl`
+---
 
-## Step 2 — Push SFT data to HF Hub (local)
+## Status
 
-```bash
-python scripts/push_to_hub.py --sft --token $HF_TOKEN
-```
+- [x] SFT datasets prepared and pushed to `DasonTio/mop-divpo-sft-data`
+  - contrarian: 3,662 records (CGA-CMV)
+  - systems_thinker: 5,000 records (StackExchange)
+  - cross_domain_analogist: 5,000 records (ArXiv abstracts)
+  - minimalist: 5,000 records (IBM Argument Quality)
+- [ ] SFT adapters trained
+- [ ] DivPO datasets prepared
+- [ ] DivPO adapters trained
 
-Uploads to: `DasonTio/mop-divpo-sft-data`
+---
 
-## Step 3 — Train SFT adapters (Google Colab)
+## Colab Setup
+
+**Runtime:** Use GPU (Runtime → Change runtime type → T4 GPU or better)
+
+---
+
+### Cell 1 — Install dependencies
 
 ```python
-# Cell 1: Install
-!pip install transformers peft trl accelerate bitsandbytes datasets huggingface_hub
+!pip install -q transformers peft trl accelerate bitsandbytes datasets huggingface_hub sentence-transformers
+```
 
-# Cell 2: Set token + clone
+---
+
+### Cell 2 — Clone repo and set credentials
+
+```python
 import os
-os.environ["HF_TOKEN"] = "$HF_TOKEN"
-!git clone https://github.com/YOUR_USERNAME/mop_divpo_llm-counter-argument.git
-%cd mop_divpo_llm-counter-argument
+from google.colab import userdata
 
-# Cell 3: Train all personas (sequentially, ~1-2h per persona on T4)
-!python scripts/train_sft.py --all --token $HF_TOKEN
-# Or train one at a time:
-# !python scripts/train_sft.py --persona contrarian --token $HF_TOKEN
+os.environ["HF_TOKEN"] = userdata.get("HF_TOKEN")
+
+!git clone https://github.com/DasonTio/mop-divpo-llm-counter-argument.git
+%cd mop-divpo-llm-counter-argument
 ```
-
-Each adapter is automatically pushed to: `DasonTio/mop-divpo-coauthor/sft/{persona}/`
-
-## Step 4 — Prepare DivPO datasets (local, after SFT training)
-
-```bash
-# Pulls SFT adapters from HF Hub, generates candidates, builds preference pairs
-python scripts/prepare_divpo_datasets.py --all --from-hub --candidate-count 4 \
-    --token $HF_TOKEN
-
-# NOTE: this runs model inference locally — needs GPU or is slow on CPU
-```
-
-Outputs: `data/processed/divpo/{persona}.jsonl`
-
-## Step 5 — Push DivPO data to HF Hub (local)
-
-```bash
-python scripts/push_to_hub.py --divpo --token $HF_TOKEN
-```
-
-Uploads to: `DasonTio/mop-divpo-divpo-data`
-
-## Step 6 — Train DivPO adapters (Google Colab)
-
-```python
-# Cell: Train all DivPO adapters
-!python scripts/train_divpo.py --all --token $HF_TOKEN
-```
-
-Each adapter pushed to: `DasonTio/mop-divpo-coauthor/divpo/{persona}/`
 
 ---
 
-## HuggingFace Hub layout
+### Cell 3 — Verify GPU
+
+```python
+import torch
+print("CUDA available:", torch.cuda.is_available())
+print("GPU:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "None — switch runtime to GPU")
+```
+
+---
+
+## Phase 1 — SFT Training
+
+Train 4 persona LoRA adapters on the prepared SFT datasets.
+Each adapter learns from ~3,600–5,000 domain-specific examples.
+
+### Cell 4 — Train all SFT adapters (~1–2h per persona on T4)
+
+```python
+# Trains contrarian → systems_thinker → cross_domain_analogist → minimalist sequentially
+# Each adapter auto-pushed to DasonTio/mop-divpo-coauthor/sft/{persona}/
+!python scripts/train_sft.py --all
+```
+
+Or train one at a time:
+
+```python
+# Run these cells one by one if you want to checkpoint between personas
+!python scripts/train_sft.py --persona contrarian
+!python scripts/train_sft.py --persona systems_thinker
+!python scripts/train_sft.py --persona cross_domain_analogist
+!python scripts/train_sft.py --persona minimalist
+```
+
+Adapters saved locally to `outputs/adapters/sft/{persona}/` and pushed to HF Hub.
+
+---
+
+## Phase 2 — DivPO Dataset Generation
+
+Generate preference pairs from the trained SFT adapters.
+Each prompt gets N candidate responses; rare-but-good is `chosen`, common-or-weak is `rejected`.
+
+### Cell 5 — Download SFT JSONL for prompt pool
+
+```python
+import os
+from huggingface_hub import hf_hub_download
+
+os.makedirs("data/processed/sft", exist_ok=True)
+for persona in ["contrarian", "systems_thinker", "cross_domain_analogist", "minimalist"]:
+    hf_hub_download(
+        repo_id="DasonTio/mop-divpo-sft-data",
+        filename=f"{persona}.jsonl",
+        repo_type="dataset",
+        local_dir="data/processed/sft",
+        token=os.environ["HF_TOKEN"],
+    )
+    print(f"Downloaded {persona}.jsonl")
+```
+
+### Cell 6 — Generate DivPO preference pairs (~30–60 min on T4)
+
+```python
+# Pulls SFT adapters from HF Hub, generates 4 candidates per prompt,
+# scores for quality + rarity, saves (chosen, rejected) pairs
+!python scripts/prepare_divpo_datasets.py --all --from-hub --candidate-count 4
+```
+
+Or per persona:
+
+```python
+!python scripts/prepare_divpo_datasets.py --persona contrarian --from-hub --candidate-count 4
+!python scripts/prepare_divpo_datasets.py --persona systems_thinker --from-hub --candidate-count 4
+!python scripts/prepare_divpo_datasets.py --persona cross_domain_analogist --from-hub --candidate-count 4
+!python scripts/prepare_divpo_datasets.py --persona minimalist --from-hub --candidate-count 4
+```
+
+### Cell 7 — Push DivPO datasets to HF Hub
+
+```python
+!python scripts/push_to_hub.py --divpo
+```
+
+Uploads to `DasonTio/mop-divpo-divpo-data/{persona}.jsonl`.
+
+---
+
+## Phase 3 — DivPO Training
+
+Fine-tune from SFT adapters using DPO on the preference pairs.
+Teaches the model to prefer rare-but-good responses over common ones.
+
+### Cell 8 — Train all DivPO adapters (~1h per persona on T4)
+
+```python
+# Pulls SFT adapters + DivPO datasets from HF Hub
+# Trains DPO on preference pairs
+# Pushes to DasonTio/mop-divpo-coauthor/divpo/{persona}/
+!python scripts/train_divpo.py --all
+```
+
+Or per persona:
+
+```python
+!python scripts/train_divpo.py --persona contrarian
+!python scripts/train_divpo.py --persona systems_thinker
+!python scripts/train_divpo.py --persona cross_domain_analogist
+!python scripts/train_divpo.py --persona minimalist
+```
+
+---
+
+## Verify — Load a trained adapter
+
+After training completes, verify an adapter loads and generates:
+
+```python
+import torch
+import sys
+sys.path.insert(0, "src")
+
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft import PeftModel
+
+base_model = "Qwen/Qwen2.5-0.5B-Instruct"
+tokenizer = AutoTokenizer.from_pretrained(base_model)
+base = AutoModelForCausalLM.from_pretrained(base_model, torch_dtype=torch.float16, device_map="auto")
+
+# Load SFT contrarian adapter
+model = PeftModel.from_pretrained(base, "DasonTio/mop-divpo-coauthor", subfolder="sft/contrarian")
+model.eval()
+
+prompt = "Generate a counter-argument to this claim:\n\nRemote work is strictly better for productivity."
+inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+with torch.no_grad():
+    out = model.generate(**inputs, max_new_tokens=150, temperature=0.9, do_sample=True)
+print(tokenizer.decode(out[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True))
+```
+
+---
+
+## HF Hub layout
 
 | Resource | Repo | Path |
 |---|---|---|
@@ -86,18 +220,4 @@ Each adapter pushed to: `DasonTio/mop-divpo-coauthor/divpo/{persona}/`
 | SFT adapters | `DasonTio/mop-divpo-coauthor` | `sft/{persona}/` |
 | DivPO adapters | `DasonTio/mop-divpo-coauthor` | `divpo/{persona}/` |
 
----
-
-## Loading trained adapters (inference)
-
-```python
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from peft import PeftModel
-
-base = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")
-model = PeftModel.from_pretrained(
-    base,
-    "DasonTio/mop-divpo-coauthor",
-    subfolder="divpo/contrarian",   # or sft/contrarian, divpo/systems_thinker, etc.
-)
-```
+Personas: `contrarian` · `systems_thinker` · `cross_domain_analogist` · `minimalist`
