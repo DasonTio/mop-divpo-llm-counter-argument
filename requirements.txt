@@ -1,0 +1,19 @@
+# Data prep (local)
+convokit
+datasets
+sentence-transformers
+numpy
+pandas
+tqdm
+huggingface_hub
+
+# Training (Colab)
+transformers
+peft
+trl
+accelerate
+bitsandbytes
+torch
+
+# Dev
+ipykernel

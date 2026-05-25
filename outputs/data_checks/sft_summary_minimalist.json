@@ -1,0 +1,15 @@
+{
+  "persona": "minimalist",
+  "total_records": 5000,
+  "filter_stats": {
+    "total_seen": 6209,
+    "total_kept": 5000,
+    "total_filtered": 1209,
+    "filter_counts": {
+      "low_quality": 909,
+      "argument_too_short": 300
+    }
+  },
+  "avg_prompt_words": 13.8,
+  "avg_response_words": 18.8
+}

@@ -1,0 +1,19 @@
+{
+  "persona": "systems_thinker",
+  "total_records": 5000,
+  "filter_stats": {
+    "total_seen": 6774,
+    "total_kept": 5000,
+    "total_filtered": 1774,
+    "filter_counts": {
+      "answer_too_long": 1264,
+      "question_too_short": 151,
+      "answer_too_short": 227,
+      "question_too_long": 126,
+      "mostly_code": 4,
+      "mostly_links": 2
+    }
+  },
+  "avg_prompt_words": 130.3,
+  "avg_response_words": 142.2
+}

@@ -1,0 +1,17 @@
+{
+  "persona": "cross_domain_analogist",
+  "total_records": 5000,
+  "filter_stats": {
+    "total_seen": 7535,
+    "total_kept": 5000,
+    "total_filtered": 2535,
+    "filter_counts": {
+      "title_too_short": 165,
+      "abstract_too_short": 2009,
+      "abstract_too_long": 345,
+      "formula_heavy": 16
+    }
+  },
+  "avg_prompt_words": 25.9,
+  "avg_response_words": 138.9
+}

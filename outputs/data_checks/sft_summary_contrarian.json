@@ -1,0 +1,17 @@
+{
+  "persona": "contrarian",
+  "total_records": 3662,
+  "filter_stats": {
+    "total_seen": 5427,
+    "total_kept": 3662,
+    "total_filtered": 1765,
+    "filter_counts": {
+      "response_too_long": 192,
+      "deleted_marker": 194,
+      "response_too_short": 1369,
+      "mostly_links": 10
+    }
+  },
+  "avg_prompt_words": 124.6,
+  "avg_response_words": 84.9
+}
