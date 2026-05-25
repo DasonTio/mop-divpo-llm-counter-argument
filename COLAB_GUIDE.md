@@ -52,7 +52,13 @@ Each adapter learns a distinct cognitive style for counter-argument generation.
 
 ```python
 !pip install -q transformers peft trl accelerate bitsandbytes datasets huggingface_hub sentence-transformers
+!pip uninstall -y -q torchao
 ```
+
+Colab may preinstall an old `torchao` build. This project does not use torchao,
+but PEFT will still detect incompatible versions during LoRA injection.
+After uninstalling it, restart the runtime once before training if you already
+imported `peft` or started a failed training run.
 
 ---
 

@@ -6,6 +6,7 @@ trains with TRL SFTTrainer, pushes adapter back to HF Hub.
 
 Colab setup (run these first):
     !pip install transformers peft trl accelerate bitsandbytes datasets huggingface_hub
+    !pip uninstall -y torchao
     import os; os.environ["HF_TOKEN"] = "hf_xxx"
 
 Usage:
@@ -37,6 +38,10 @@ LORA_TARGET_MODULES = [
 
 
 def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
+    from mop_divpo.training_env import check_torchao_compatibility
+
+    check_torchao_compatibility()
+
     import torch
     from peft import LoraConfig, TaskType, get_peft_model
     from transformers import (

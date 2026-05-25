@@ -10,6 +10,7 @@ scripts/push_to_hub.py --divpo).
 
 Colab setup (run these first):
     !pip install transformers peft trl accelerate bitsandbytes datasets huggingface_hub
+    !pip uninstall -y torchao
     import os; os.environ["HF_TOKEN"] = "hf_xxx"
 
 Usage:
@@ -39,6 +40,10 @@ LORA_TARGET_MODULES = [
 
 
 def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
+    from mop_divpo.training_env import check_torchao_compatibility
+
+    check_torchao_compatibility()
+
     import torch
     from datasets import load_dataset
     from peft import LoraConfig, PeftModel, TaskType

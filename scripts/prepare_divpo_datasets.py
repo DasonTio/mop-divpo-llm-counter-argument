@@ -24,6 +24,10 @@ PERSONA_IDS = ["contrarian", "systems_thinker", "cross_domain_analogist", "minim
 
 
 def _require_adapters() -> None:
+    from mop_divpo.training_env import check_torchao_compatibility
+
+    check_torchao_compatibility()
+
     try:
         import peft  # noqa: F401
     except ImportError:
@@ -222,8 +226,6 @@ def run_persona(persona: str, args: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    _require_adapters()
-
     parser = argparse.ArgumentParser(description="Prepare DivPO preference datasets.")
     parser.add_argument("--persona", choices=PERSONA_IDS)
     parser.add_argument("--all", action="store_true")
@@ -248,6 +250,8 @@ def main() -> None:
 
     if not args.persona and not args.all:
         parser.error("Provide --persona <name> or --all.")
+
+    _require_adapters()
 
     personas = PERSONA_IDS if args.all else [args.persona]
     for p in personas:
