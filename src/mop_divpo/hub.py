@@ -66,7 +66,23 @@ def push_divpo_file(persona: str, jsonl_path: str | Path, token: str) -> str:
 
 def push_adapter(adapter_dir: str | Path, stage: str, persona: str, token: str) -> str:
     """Upload a trained adapter folder to MODEL_REPO under {stage}/{persona}/."""
-    from huggingface_hub import upload_folder
+    from huggingface_hub import upload_folder, repo_exists, create_repo
+
+    # Ensure the target model repo exists. If it doesn't, try to create it
+    # using the provided token. Note: create_repo will create under the
+    # account associated with the token; if MODEL_REPO points to another
+    # username you may need to create it manually on the Hub or update
+    # MODEL_REPO to a repo you control.
+    try:
+        if not repo_exists(MODEL_REPO, repo_type="model", token=token):
+            create_repo(repo_id=MODEL_REPO, repo_type="model", token=token, private=False)
+            print(f"  Created model repo: {MODEL_REPO}")
+    except Exception as e:
+        raise RuntimeError(
+            f"Model repo {MODEL_REPO} not found and could not be created automatically. "
+            "Either create it manually on Hugging Face, or set MODEL_REPO to an existing repo "
+            "you control. Also ensure your HF token has model write/create permissions."
+        ) from e
 
     url = upload_folder(
         folder_path=str(adapter_dir),
