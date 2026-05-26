@@ -19,11 +19,14 @@ def score_quality(
     embedder,
     min_words: int = 10,
     max_words: int = 400,
+    _prompt_emb: "np.ndarray | None" = None,
+    _response_emb: "np.ndarray | None" = None,
 ) -> float:
     """Heuristic quality score in [0, 1].
 
     Components: embedding relevance (50%), coherence proxy (30%), length (20%).
     Returns 0.0 for responses outside word-count bounds.
+    Pass _prompt_emb/_response_emb to skip the encode call (batch path).
     """
     words = response.split()
     n = len(words)
@@ -31,8 +34,11 @@ def score_quality(
         return 0.0
 
     try:
-        embs = embedder.encode([prompt, response], convert_to_numpy=True)
-        relevance = max(0.0, _cosine(embs[0], embs[1]))
+        if _prompt_emb is not None and _response_emb is not None:
+            relevance = max(0.0, _cosine(_prompt_emb, _response_emb))
+        else:
+            embs = embedder.encode([prompt, response], convert_to_numpy=True)
+            relevance = max(0.0, _cosine(embs[0], embs[1]))
     except Exception:
         relevance = 0.5
 
@@ -45,17 +51,27 @@ def score_quality(
     return 0.5 * relevance + 0.3 * coherence + 0.2 * length_score
 
 
-def score_rarity(response: str, others: list[str], embedder) -> float:
+def score_rarity(
+    response: str,
+    others: list[str],
+    embedder,
+    _response_emb: "np.ndarray | None" = None,
+    _other_embs: "list[np.ndarray] | None" = None,
+) -> float:
     """Rarity = 1 - mean cosine similarity to peer candidates.
 
     Falls back to 1.0 if no peers, 0.5 on embedding failure.
+    Pass _response_emb/_other_embs to skip the encode call (batch path).
     """
     if not others:
         return 1.0
     try:
-        embs = embedder.encode([response] + others, convert_to_numpy=True)
-        target = embs[0]
-        sims = [_cosine(target, embs[i + 1]) for i in range(len(others))]
+        if _response_emb is not None and _other_embs is not None:
+            sims = [_cosine(_response_emb, e) for e in _other_embs]
+        else:
+            embs = embedder.encode([response] + others, convert_to_numpy=True)
+            target = embs[0]
+            sims = [_cosine(target, embs[i + 1]) for i in range(len(others))]
         return max(0.0, 1.0 - float(np.mean(sims)))
     except Exception:
         return 0.5

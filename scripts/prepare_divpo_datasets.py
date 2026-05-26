@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from mop_divpo.data.writers import write_json, write_jsonl
-from mop_divpo.divpo.pairs import select_pair
+from mop_divpo.divpo.pairs import select_pair, select_pairs_batch
 
 PERSONA_IDS = ["contrarian", "systems_thinker", "cross_domain_analogist", "minimalist"]
 
@@ -104,6 +104,7 @@ def _load_model(adapter_path: str, base_model: str, token: str):
     tokenizer = AutoTokenizer.from_pretrained(base_model, token=token or None)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "left"  # required for batched generation with padding
 
     base = AutoModelForCausalLM.from_pretrained(
         base_model,
@@ -152,6 +153,62 @@ def _generate_candidates(
     return [tokenizer.decode(out[i][prompt_len:], skip_special_tokens=True) for i in range(n)]
 
 
+def _generate_candidates_batch(
+    prompts: list[str],
+    system_prompt: str,
+    model,
+    tokenizer,
+    n: int,
+    temperature: float,
+    top_p: float,
+    max_new_tokens: int,
+) -> list[list[str]]:
+    """Generate n candidates for each prompt in a batch.
+
+    Repeats each prompt n times so one model.generate() call covers the whole batch.
+    Requires tokenizer.padding_side == "left" (set in _load_model).
+    Returns list of length len(prompts), each element is a list of n candidate strings.
+    """
+    import torch
+
+    repeated_texts = []
+    for prompt in prompts:
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt},
+        ]
+        text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        for _ in range(n):
+            repeated_texts.append(text)
+
+    inputs = tokenizer(
+        repeated_texts,
+        return_tensors="pt",
+        padding=True,
+        truncation=True,
+        max_length=512,
+    ).to(model.device)
+
+    prompt_len = inputs["input_ids"].shape[1]
+
+    with torch.no_grad():
+        out = model.generate(
+            **inputs,
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            do_sample=True,
+            pad_token_id=tokenizer.eos_token_id,
+        )
+
+    responses = [
+        tokenizer.decode(out[i][prompt_len:], skip_special_tokens=True)
+        for i in range(len(repeated_texts))
+    ]
+    # Group n responses per prompt
+    return [responses[i * n: (i + 1) * n] for i in range(len(prompts))]
+
+
 def _write_divpo_examples(persona: str, records: list[dict], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines: list[str] = [f"\n\n# DivPO Examples — {persona}\n\n"]
@@ -196,18 +253,31 @@ def run_persona(persona: str, args: argparse.Namespace, token: str) -> None:
     model, tokenizer = _load_model(adapter_path, args.base_model, token)
     print("  Model loaded.", flush=True)
 
-    embedder = SentenceTransformer("all-MiniLM-L6-v2")
+    # Place embedder on GPU 1 (frees GPU 0 entirely for the LLM) or GPU 0 if single-GPU
+    n_gpu = torch.cuda.device_count()
+    if n_gpu > 1:
+        embedder_device = "cuda:1"
+    elif n_gpu == 1:
+        embedder_device = "cuda:0"
+    else:
+        embedder_device = "cpu"
+    print(f"  Embedder device: {embedder_device}", flush=True)
+    embedder = SentenceTransformer("all-MiniLM-L6-v2", device=embedder_device)
+
     records: list[dict] = []
     skipped = 0
     skip_reasons: dict[str, int] = {}
+    batch_size = args.gen_batch_size
 
-    for i, prompt in enumerate(prompts):
-        if i % 10 == 0:
-            print(f"  [{i}/{len(prompts)}] generating...", flush=True)
+    for batch_start in range(0, len(prompts), batch_size):
+        batch_prompts = prompts[batch_start: batch_start + batch_size]
+        if batch_start % max(batch_size, 1) == 0:
+            print(f"  [{batch_start}/{len(prompts)}] generating batch of {len(batch_prompts)}...", flush=True)
 
+        # Batched generation — one model.generate() for all prompts × n candidates
         try:
-            candidates = _generate_candidates(
-                prompt,
+            all_candidates = _generate_candidates_batch(
+                batch_prompts,
                 system_prompt,
                 model,
                 tokenizer,
@@ -217,14 +287,31 @@ def run_persona(persona: str, args: argparse.Namespace, token: str) -> None:
                 args.max_new_tokens,
             )
         except Exception as exc:
-            skipped += 1
-            skip_reasons["generation_error"] = skip_reasons.get("generation_error", 0) + 1
-            print(f"  WARNING generation failed: {exc}")
+            print(f"  WARNING batch generation failed, falling back to serial: {exc}", flush=True)
+            all_candidates = []
+            for prompt in batch_prompts:
+                try:
+                    cands = _generate_candidates(
+                        prompt, system_prompt, model, tokenizer,
+                        args.candidate_count, args.temperature, args.top_p, args.max_new_tokens,
+                    )
+                    all_candidates.append(cands)
+                except Exception as inner_exc:
+                    skipped += 1
+                    skip_reasons["generation_error"] = skip_reasons.get("generation_error", 0) + 1
+                    print(f"  WARNING serial generation failed: {inner_exc}")
+                    all_candidates.append([])
+
+        # Batch scoring — one embedder.encode() call for all prompts + candidates
+        valid_prompts = [p for p, c in zip(batch_prompts, all_candidates) if c]
+        valid_candidates = [c for c in all_candidates if c]
+
+        if not valid_prompts:
             continue
 
-        pair = select_pair(
-            prompt=prompt,
-            candidates=candidates,
+        pairs = select_pairs_batch(
+            prompts=valid_prompts,
+            candidates_batch=valid_candidates,
             embedder=embedder,
             min_quality=args.min_quality,
             quality_weight=args.quality_weight,
@@ -232,12 +319,13 @@ def run_persona(persona: str, args: argparse.Namespace, token: str) -> None:
             persona=persona,
             candidates_per_prompt=args.candidate_count,
         )
-        if pair is None:
-            skipped += 1
-            skip_reasons["no_eligible_pair"] = skip_reasons.get("no_eligible_pair", 0) + 1
-            continue
 
-        records.append(pair.to_dict())
+        for pair in pairs:
+            if pair is None:
+                skipped += 1
+                skip_reasons["no_eligible_pair"] = skip_reasons.get("no_eligible_pair", 0) + 1
+                continue
+            records.append(pair.to_dict())
 
     # Free VRAM before next persona
     del model
@@ -285,6 +373,9 @@ def main() -> None:
     parser.add_argument("--top-p", type=float, default=0.95)
     parser.add_argument("--max-new-tokens", type=int, default=150)
     parser.add_argument("--limit", type=int, default=500, help="Max prompts per persona.")
+    parser.add_argument("--gen-batch-size", type=int, default=8,
+                        help="Prompts per generation batch. Higher = better GPU utilization. "
+                             "T4: 8–16, A100: 32–64.")
     parser.add_argument("--from-hub", action="store_true",
                         help="Pull SFT adapters from HF Hub (DasonTio/mop-divpo-coauthor).")
     parser.add_argument("--push", action="store_true",

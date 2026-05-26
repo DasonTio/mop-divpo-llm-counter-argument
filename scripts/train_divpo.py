@@ -56,6 +56,11 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
     print(f"  Training DivPO adapter: {persona}")
     print(f"{'='*60}\n")
 
+    n_gpu = torch.cuda.device_count()
+    for i in range(n_gpu):
+        print(f"  GPU {i}: {torch.cuda.get_device_name(i)}", flush=True)
+    print(f"  GPUs available: {n_gpu}", flush=True)
+
     # --- Data ---
     print("Loading DivPO dataset from HF Hub...", flush=True)
     ds = load_dataset(
@@ -76,10 +81,14 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
     sft_subfolder = f"sft/{persona}"
     print(f"Loading SFT adapter from {sft_adapter_id}/{sft_subfolder} ...", flush=True)
 
+    # Trainable model on GPU 0; ref model on GPU 1 when available (avoids VRAM contention)
+    model_device = {"": 0}
+    ref_device = {"": 1} if n_gpu > 1 else {"": 0}
+
     base = AutoModelForCausalLM.from_pretrained(
         BASE_MODEL,
         torch_dtype=torch.float16,
-        device_map="auto",
+        device_map=model_device,
         token=token,
     )
     model = PeftModel.from_pretrained(
@@ -95,7 +104,7 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
     ref_base = AutoModelForCausalLM.from_pretrained(
         BASE_MODEL,
         torch_dtype=torch.float16,
-        device_map="auto",
+        device_map=ref_device,
         token=token,
     )
     ref_model = PeftModel.from_pretrained(
@@ -172,8 +181,8 @@ def main() -> None:
     parser.add_argument("--all", action="store_true")
     parser.add_argument("--epochs", type=int, default=2)
     parser.add_argument("--lr", type=float, default=5e-5)
-    parser.add_argument("--batch-size", type=int, default=4)
-    parser.add_argument("--grad-accum", type=int, default=8)
+    parser.add_argument("--batch-size", type=int, default=8)   # doubled for T4 (was 4)
+    parser.add_argument("--grad-accum", type=int, default=4)   # halved; effective batch stays 32
     parser.add_argument("--token", default=None)
     parser.add_argument("--no-push", action="store_true")
     args = parser.parse_args()
