@@ -61,6 +61,13 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
         print(f"  GPU {i}: {torch.cuda.get_device_name(i)}", flush=True)
     print(f"  GPUs available: {n_gpu}", flush=True)
 
+    torch.backends.cudnn.benchmark = True
+
+    # Under accelerate DDP (WORLD_SIZE > 1), do NOT set device_map — accelerate owns placement.
+    # Single-process: put both models on cuda:0 (both fit at ~1GB each, no cross-device TRL issues).
+    use_ddp = int(os.environ.get("WORLD_SIZE", "1")) > 1
+    device_kwargs: dict = {} if use_ddp else {"device_map": {"": 0}}
+
     # --- Data ---
     print("Loading DivPO dataset from HF Hub...", flush=True)
     ds = load_dataset(
@@ -81,14 +88,11 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
     sft_subfolder = f"sft/{persona}"
     print(f"Loading SFT adapter from {sft_adapter_id}/{sft_subfolder} ...", flush=True)
 
-    # Trainable model on GPU 0; ref model on GPU 1 when available (avoids VRAM contention)
-    model_device = {"": 0}
-    ref_device = {"": 1} if n_gpu > 1 else {"": 0}
-
     base = AutoModelForCausalLM.from_pretrained(
         BASE_MODEL,
         torch_dtype=torch.float16,
-        device_map=model_device,
+        attn_implementation="sdpa",
+        **device_kwargs,
         token=token,
     )
     model = PeftModel.from_pretrained(
@@ -99,12 +103,14 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
         is_trainable=True,
     )
     model.config.use_cache = False
+    model.enable_input_require_grads()
 
     # Reference model (frozen SFT — DPO needs it for KL constraint)
     ref_base = AutoModelForCausalLM.from_pretrained(
         BASE_MODEL,
         torch_dtype=torch.float16,
-        device_map=ref_device,
+        attn_implementation="sdpa",
+        **device_kwargs,
         token=token,
     )
     ref_model = PeftModel.from_pretrained(
@@ -147,6 +153,13 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
         beta=0.1,
         max_prompt_length=256,
         max_length=512,
+        # --- performance ---
+        optim="adamw_torch_fused",       # fused kernel: ~10% faster than default AdamW
+        group_by_length=True,            # batch similar-length seqs → less padding waste
+        gradient_checkpointing=True,     # trade compute for memory → larger batch fits
+        dataloader_num_workers=4,        # async data loading
+        dataloader_prefetch_factor=2,    # prefetch 2 batches ahead
+        remove_unused_columns=False,     # DPO needs all columns
     )
 
     trainer_kwargs = {

@@ -109,7 +109,8 @@ def _load_model(adapter_path: str, base_model: str, token: str):
     base = AutoModelForCausalLM.from_pretrained(
         base_model,
         torch_dtype=torch.float16,
-        device_map="auto",
+        device_map={"": 0},
+        attn_implementation="sdpa",
         token=token or None,
     )
     model = PeftModel.from_pretrained(base, adapter_path)
@@ -165,24 +166,22 @@ def _generate_candidates_batch(
 ) -> list[list[str]]:
     """Generate n candidates for each prompt in a batch.
 
-    Repeats each prompt n times so one model.generate() call covers the whole batch.
+    Tokenizes B unique prompts once, then uses num_return_sequences=n.
+    Output shape: [B*n]. Ordering: [p0_s0..p0_{n-1}, p1_s0..p1_{n-1}, ...].
     Requires tokenizer.padding_side == "left" (set in _load_model).
-    Returns list of length len(prompts), each element is a list of n candidate strings.
     """
     import torch
 
-    repeated_texts = []
+    texts = []
     for prompt in prompts:
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt},
         ]
-        text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        for _ in range(n):
-            repeated_texts.append(text)
+        texts.append(tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True))
 
     inputs = tokenizer(
-        repeated_texts,
+        texts,
         return_tensors="pt",
         padding=True,
         truncation=True,
@@ -199,13 +198,14 @@ def _generate_candidates_batch(
             top_p=top_p,
             do_sample=True,
             pad_token_id=tokenizer.eos_token_id,
+            num_return_sequences=n,
         )
 
+    # out: [B*n, prompt_len + max_new_tokens]
     responses = [
         tokenizer.decode(out[i][prompt_len:], skip_special_tokens=True)
-        for i in range(len(repeated_texts))
+        for i in range(len(prompts) * n)
     ]
-    # Group n responses per prompt
     return [responses[i * n: (i + 1) * n] for i in range(len(prompts))]
 
 
@@ -248,6 +248,9 @@ def run_persona(persona: str, args: argparse.Namespace, token: str) -> None:
     print(f"  {len(prompts)} prompts loaded")
 
     system_prompt = PERSONAS[persona]["system_prompt"]
+
+    import torch
+    torch.backends.cudnn.benchmark = True  # auto-tune kernels for consistent batch shapes
 
     print("  Loading model...", flush=True)
     model, tokenizer = _load_model(adapter_path, args.base_model, token)
@@ -373,9 +376,9 @@ def main() -> None:
     parser.add_argument("--top-p", type=float, default=0.95)
     parser.add_argument("--max-new-tokens", type=int, default=150)
     parser.add_argument("--limit", type=int, default=500, help="Max prompts per persona.")
-    parser.add_argument("--gen-batch-size", type=int, default=8,
+    parser.add_argument("--gen-batch-size", type=int, default=16,
                         help="Prompts per generation batch. Higher = better GPU utilization. "
-                             "T4: 8–16, A100: 32–64.")
+                             "T4: 16–32, A100: 64–128.")
     parser.add_argument("--from-hub", action="store_true",
                         help="Pull SFT adapters from HF Hub (DasonTio/mop-divpo-coauthor).")
     parser.add_argument("--push", action="store_true",
