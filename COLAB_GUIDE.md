@@ -36,7 +36,7 @@ Each adapter learns a distinct cognitive style for counter-argument generation.
   - systems_thinker: 5,000 records (StackExchange)
   - cross_domain_analogist: 5,000 records (ArXiv abstracts)
   - minimalist: 5,000 records (IBM Argument Quality)
-- [ ] SFT adapters trained
+- [x] SFT adapters trained and pushed to `DasonTio/mop-divpo-coauthor/sft/{persona}/`
 - [ ] DivPO datasets prepared
 - [ ] DivPO adapters trained
 
@@ -136,30 +136,38 @@ for persona in ["contrarian", "systems_thinker", "cross_domain_analogist", "mini
     print(f"Downloaded {persona}.jsonl")
 ```
 
-### Cell 6 — Generate DivPO preference pairs (~30–60 min on T4)
+### Cell 6 — Generate DivPO preference pairs and push (~30–60 min on T4)
+
+`--push` uploads each persona's pairs to HF Hub immediately after generation.
+Model is loaded once per persona and freed from VRAM before the next one.
 
 ```python
-# Pulls SFT adapters from HF Hub, generates 4 candidates per prompt,
-# scores for quality + rarity, saves (chosen, rejected) pairs
-!python scripts/prepare_divpo_datasets.py --all --from-hub --candidate-count 4
+# All 4 personas sequentially — model reloaded + VRAM freed between each
+!python scripts/prepare_divpo_datasets.py --all --from-hub --candidate-count 4 --push
 ```
 
-Or per persona:
+Or per persona (run one cell at a time to checkpoint):
 
 ```python
-!python scripts/prepare_divpo_datasets.py --persona contrarian --from-hub --candidate-count 4
-!python scripts/prepare_divpo_datasets.py --persona systems_thinker --from-hub --candidate-count 4
-!python scripts/prepare_divpo_datasets.py --persona cross_domain_analogist --from-hub --candidate-count 4
-!python scripts/prepare_divpo_datasets.py --persona minimalist --from-hub --candidate-count 4
+!python scripts/prepare_divpo_datasets.py --persona contrarian --from-hub --candidate-count 4 --push
 ```
-
-### Cell 7 — Push DivPO datasets to HF Hub
-
 ```python
-!python scripts/push_to_hub.py --divpo
+!python scripts/prepare_divpo_datasets.py --persona systems_thinker --from-hub --candidate-count 4 --push
+```
+```python
+!python scripts/prepare_divpo_datasets.py --persona cross_domain_analogist --from-hub --candidate-count 4 --push
+```
+```python
+!python scripts/prepare_divpo_datasets.py --persona minimalist --from-hub --candidate-count 4 --push
 ```
 
-Uploads to `DasonTio/mop-divpo-divpo-data/{persona}.jsonl`.
+Data saved locally to `data/processed/divpo/{persona}.jsonl` and uploaded to
+`DasonTio/mop-divpo-divpo-data/{persona}.jsonl`.
+
+> **If you ran without `--push`**, upload manually:
+> ```python
+> !python scripts/push_to_hub.py --divpo
+> ```
 
 ---
 

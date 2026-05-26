@@ -5,13 +5,17 @@ Requires trained SFT adapters. Adapters can be local OR pulled from HF Hub.
 
 Usage:
     # Pull adapters from HF Hub (after train_sft.py ran on Colab)
-    python scripts/prepare_divpo_datasets.py --all --from-hub --token hf_xxx
+    python scripts/prepare_divpo_datasets.py --all --from-hub
 
     # Use local adapters
     python scripts/prepare_divpo_datasets.py --all --adapter-dir outputs/adapters/sft
+
+    # Push to HF Hub immediately after generation
+    python scripts/prepare_divpo_datasets.py --all --from-hub --push
 """
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -64,11 +68,10 @@ def _resolve_adapter(
     from_hub: bool,
     token: str,
 ) -> str:
-    """Return local path or HF Hub repo+subfolder string for the SFT adapter."""
     if from_hub:
         from mop_divpo.hub import MODEL_REPO
-        # huggingface_hub snapshot_download pulls the subfolder locally
         from huggingface_hub import snapshot_download
+
         local = snapshot_download(
             repo_id=MODEL_REPO,
             repo_type="model",
@@ -92,25 +95,49 @@ def _resolve_adapter(
         return str(adapter_path)
 
 
+def _load_model(adapter_path: str, base_model: str, token: str):
+    """Load tokenizer + SFT adapter once per persona. Returns (model, tokenizer)."""
+    import torch
+    from peft import PeftModel
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    tokenizer = AutoTokenizer.from_pretrained(base_model, token=token or None)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    base = AutoModelForCausalLM.from_pretrained(
+        base_model,
+        torch_dtype=torch.float16,
+        device_map="auto",
+        token=token or None,
+    )
+    model = PeftModel.from_pretrained(base, adapter_path)
+    model.eval()
+    return model, tokenizer
+
+
 def _generate_candidates(
     prompt: str,
-    adapter_path: str,
-    base_model: str,
+    system_prompt: str,
+    model,
+    tokenizer,
     n: int,
     temperature: float,
     top_p: float,
     max_new_tokens: int,
 ) -> list[str]:
+    """Generate n candidate responses for a prompt. Model loaded externally."""
     import torch
-    from peft import PeftModel  # type: ignore
-    from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    tokenizer = AutoTokenizer.from_pretrained(base_model)
-    base = AutoModelForCausalLM.from_pretrained(base_model, torch_dtype=torch.float16)
-    model = PeftModel.from_pretrained(base, adapter_path)
-    model.eval()
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": prompt},
+    ]
+    text = tokenizer.apply_chat_template(
+        messages, tokenize=False, add_generation_prompt=True
+    )
+    inputs = tokenizer(text, return_tensors="pt").to(model.device)
 
-    inputs = tokenizer(prompt, return_tensors="pt")
     candidates: list[str] = []
     for _ in range(n):
         with torch.no_grad():
@@ -120,6 +147,7 @@ def _generate_candidates(
                 temperature=temperature,
                 top_p=top_p,
                 do_sample=True,
+                pad_token_id=tokenizer.eos_token_id,
             )
         new_tokens = out[0][inputs["input_ids"].shape[1]:]
         candidates.append(tokenizer.decode(new_tokens, skip_special_tokens=True))
@@ -146,13 +174,14 @@ def _write_divpo_examples(persona: str, records: list[dict], path: Path) -> None
         f.write("".join(lines))
 
 
-def run_persona(persona: str, args: argparse.Namespace) -> None:
+def run_persona(persona: str, args: argparse.Namespace, token: str) -> None:
+    import torch
     from sentence_transformers import SentenceTransformer  # type: ignore
+    from personas import PERSONAS
 
     sft_dir = Path(args.prompt_pool)
     output_dir = Path(args.output_dir)
     checks_dir = Path("outputs/data_checks")
-    token = getattr(args, "token", "") or ""
 
     adapter_path = _resolve_adapter(
         persona,
@@ -162,6 +191,12 @@ def run_persona(persona: str, args: argparse.Namespace) -> None:
     )
     prompts = _load_prompt_pool(persona, sft_dir, max_prompts=args.limit)
     print(f"  {len(prompts)} prompts loaded")
+
+    system_prompt = PERSONAS[persona]["system_prompt"]
+
+    print("  Loading model...", flush=True)
+    model, tokenizer = _load_model(adapter_path, args.base_model, token)
+    print("  Model loaded.", flush=True)
 
     embedder = SentenceTransformer("all-MiniLM-L6-v2")
     records: list[dict] = []
@@ -175,8 +210,9 @@ def run_persona(persona: str, args: argparse.Namespace) -> None:
         try:
             candidates = _generate_candidates(
                 prompt,
-                adapter_path,
-                args.base_model,
+                system_prompt,
+                model,
+                tokenizer,
                 args.candidate_count,
                 args.temperature,
                 args.top_p,
@@ -205,6 +241,10 @@ def run_persona(persona: str, args: argparse.Namespace) -> None:
 
         records.append(pair.to_dict())
 
+    # Free VRAM before next persona
+    del model
+    torch.cuda.empty_cache()
+
     output_path = output_dir / f"{persona}.jsonl"
     write_jsonl(records, output_path)
     print(f"  Wrote {len(records)} DivPO pairs → {output_path}")
@@ -223,6 +263,12 @@ def run_persona(persona: str, args: argparse.Namespace) -> None:
 
     if records:
         _write_divpo_examples(persona, records, checks_dir / "divpo_examples.md")
+
+    if args.push and records:
+        from mop_divpo.hub import push_divpo_file
+        print(f"  Pushing {persona} DivPO data to HF Hub...", flush=True)
+        url = push_divpo_file(persona, output_path, token)
+        print(f"  Pushed → {url}")
 
 
 def main() -> None:
@@ -243,10 +289,16 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=1000, help="Max prompts per persona.")
     parser.add_argument("--from-hub", action="store_true",
                         help="Pull SFT adapters from HF Hub (DasonTio/mop-divpo-coauthor).")
+    parser.add_argument("--push", action="store_true",
+                        help="Push each persona's DivPO data to HF Hub after generation.")
     parser.add_argument("--token", default=None, help="HF token (or set HF_TOKEN env var).")
     args = parser.parse_args()
-    if args.from_hub and not (args.token or __import__("os").environ.get("HF_TOKEN")):
+
+    token = os.environ.get("HF_TOKEN", "") or args.token or ""
+    if args.from_hub and not token:
         parser.error("--from-hub requires --token or HF_TOKEN env var.")
+    if args.push and not token:
+        parser.error("--push requires --token or HF_TOKEN env var.")
 
     if not args.persona and not args.all:
         parser.error("Provide --persona <name> or --all.")
@@ -256,7 +308,7 @@ def main() -> None:
     personas = PERSONA_IDS if args.all else [args.persona]
     for p in personas:
         print(f"\n=== {p} ===")
-        run_persona(p, args)
+        run_persona(p, args, token)
 
     print("\nDone.")
 
