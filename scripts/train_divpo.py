@@ -23,6 +23,7 @@ import argparse
 import inspect
 import os
 import sys
+import warnings
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -37,6 +38,40 @@ LORA_TARGET_MODULES = [
     "q_proj", "k_proj", "v_proj", "o_proj",
     "gate_proj", "up_proj", "down_proj",
 ]
+
+
+def split_supported_kwargs(callable_obj: object, kwargs: dict) -> tuple[dict, dict]:
+    """Split kwargs by whether callable_obj's signature accepts them."""
+    params = inspect.signature(callable_obj).parameters
+    accepts_any = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values())
+    if accepts_any:
+        return dict(kwargs), {}
+    supported = {k: v for k, v in kwargs.items() if k in params}
+    unsupported = {k: v for k, v in kwargs.items() if k not in params}
+    return supported, unsupported
+
+
+def build_dpo_config(DPOConfig: object, config_kwargs: dict):
+    """Create a DPOConfig while preserving kwargs needed by older DPOTrainer APIs."""
+    supported, trainer_candidates = split_supported_kwargs(DPOConfig, config_kwargs)
+    return DPOConfig(**supported), trainer_candidates
+
+
+def add_supported_trainer_kwargs(
+    trainer_kwargs: dict,
+    DPOTrainer: object,
+    trainer_candidates: dict,
+) -> None:
+    """Forward DPO kwargs to DPOTrainer when the installed TRL expects them there."""
+    supported, unsupported = split_supported_kwargs(DPOTrainer.__init__, trainer_candidates)
+    trainer_kwargs.update(supported)
+    if unsupported:
+        ignored = ", ".join(sorted(unsupported))
+        warnings.warn(
+            f"Installed TRL accepts these DivPO settings in neither DPOConfig nor "
+            f"DPOTrainer: {ignored}. Training will continue with TRL defaults.",
+            RuntimeWarning,
+        )
 
 
 def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
@@ -136,31 +171,32 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
 
     # --- Training ---
     output_dir = f"outputs/adapters/divpo/{persona}"
-    dpo_config = DPOConfig(
-        output_dir=output_dir,
-        num_train_epochs=args.epochs,
-        per_device_train_batch_size=args.batch_size,
-        gradient_accumulation_steps=args.grad_accum,
-        learning_rate=args.lr,
-        lr_scheduler_type="cosine",
-        warmup_ratio=0.05,
-        weight_decay=0.01,
-        fp16=True,
-        logging_steps=10,
-        save_strategy="epoch",
-        save_total_limit=1,
-        report_to="none",
-        beta=0.1,
-        max_prompt_length=256,
-        max_length=512,
+    dpo_config_kwargs = {
+        "output_dir": output_dir,
+        "num_train_epochs": args.epochs,
+        "per_device_train_batch_size": args.batch_size,
+        "gradient_accumulation_steps": args.grad_accum,
+        "learning_rate": args.lr,
+        "lr_scheduler_type": "cosine",
+        "warmup_ratio": 0.05,
+        "weight_decay": 0.01,
+        "fp16": True,
+        "logging_steps": 10,
+        "save_strategy": "epoch",
+        "save_total_limit": 1,
+        "report_to": "none",
+        "beta": 0.1,
+        "max_prompt_length": 256,
+        "max_length": 512,
         # --- performance ---
-        optim="adamw_torch_fused",       # fused kernel: ~10% faster than default AdamW
-        group_by_length=True,            # batch similar-length seqs → less padding waste
-        gradient_checkpointing=True,     # trade compute for memory → larger batch fits
-        dataloader_num_workers=4,        # async data loading
-        dataloader_prefetch_factor=2,    # prefetch 2 batches ahead
-        remove_unused_columns=False,     # DPO needs all columns
-    )
+        "optim": "adamw_torch_fused",       # fused kernel: ~10% faster than default AdamW
+        "group_by_length": True,            # batch similar-length seqs -> less padding waste
+        "gradient_checkpointing": True,     # trade compute for memory -> larger batch fits
+        "dataloader_num_workers": 4,        # async data loading
+        "dataloader_prefetch_factor": 2,    # prefetch 2 batches ahead
+        "remove_unused_columns": False,     # DPO needs all columns
+    }
+    dpo_config, trainer_config_kwargs = build_dpo_config(DPOConfig, dpo_config_kwargs)
 
     trainer_kwargs = {
         "model": model,
@@ -168,6 +204,7 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
         "args": dpo_config,
         "train_dataset": ds,
     }
+    add_supported_trainer_kwargs(trainer_kwargs, DPOTrainer, trainer_config_kwargs)
     tokenizer_arg = "processing_class"
     if tokenizer_arg not in inspect.signature(DPOTrainer.__init__).parameters:
         tokenizer_arg = "tokenizer"
