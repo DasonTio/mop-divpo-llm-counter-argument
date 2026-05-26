@@ -137,21 +137,19 @@ def _generate_candidates(
         messages, tokenize=False, add_generation_prompt=True
     )
     inputs = tokenizer(text, return_tensors="pt").to(model.device)
+    prompt_len = inputs["input_ids"].shape[1]
 
-    candidates: list[str] = []
-    for _ in range(n):
-        with torch.no_grad():
-            out = model.generate(
-                **inputs,
-                max_new_tokens=max_new_tokens,
-                temperature=temperature,
-                top_p=top_p,
-                do_sample=True,
-                pad_token_id=tokenizer.eos_token_id,
-            )
-        new_tokens = out[0][inputs["input_ids"].shape[1]:]
-        candidates.append(tokenizer.decode(new_tokens, skip_special_tokens=True))
-    return candidates
+    with torch.no_grad():
+        out = model.generate(
+            **inputs,
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            do_sample=True,
+            pad_token_id=tokenizer.eos_token_id,
+            num_return_sequences=n,
+        )
+    return [tokenizer.decode(out[i][prompt_len:], skip_special_tokens=True) for i in range(n)]
 
 
 def _write_divpo_examples(persona: str, records: list[dict], path: Path) -> None:
@@ -204,7 +202,7 @@ def run_persona(persona: str, args: argparse.Namespace, token: str) -> None:
     skip_reasons: dict[str, int] = {}
 
     for i, prompt in enumerate(prompts):
-        if i % 50 == 0:
+        if i % 10 == 0:
             print(f"  [{i}/{len(prompts)}] generating...", flush=True)
 
         try:
@@ -285,8 +283,8 @@ def main() -> None:
     parser.add_argument("--rarity-weight", type=float, default=0.6)
     parser.add_argument("--temperature", type=float, default=0.9)
     parser.add_argument("--top-p", type=float, default=0.95)
-    parser.add_argument("--max-new-tokens", type=int, default=250)
-    parser.add_argument("--limit", type=int, default=1000, help="Max prompts per persona.")
+    parser.add_argument("--max-new-tokens", type=int, default=150)
+    parser.add_argument("--limit", type=int, default=500, help="Max prompts per persona.")
     parser.add_argument("--from-hub", action="store_true",
                         help="Pull SFT adapters from HF Hub (DasonTio/mop-divpo-coauthor).")
     parser.add_argument("--push", action="store_true",
