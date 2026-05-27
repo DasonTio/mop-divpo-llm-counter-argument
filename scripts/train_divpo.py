@@ -196,8 +196,7 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
         "optim": "adamw_torch_fused",       # fused kernel: ~10% faster than default AdamW
         "group_by_length": True,            # batch similar-length seqs -> less padding waste
         "gradient_checkpointing": True,     # trade compute for memory -> larger batch fits
-        "dataloader_num_workers": 4,        # async data loading
-        "dataloader_prefetch_factor": 2,    # prefetch 2 batches ahead
+        "dataloader_num_workers": 0,        # 0 = main thread; >0 deadlocks DDP on Kaggle
         "remove_unused_columns": False,     # DPO needs all columns
     }
     dpo_config, trainer_config_kwargs = build_dpo_config(DPOConfig, dpo_config_kwargs)
