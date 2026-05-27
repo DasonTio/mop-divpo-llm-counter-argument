@@ -230,7 +230,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model-repo", default=MODEL_REPO)
     parser.add_argument("--local-root", default="outputs/adapters/divpo")
     parser.add_argument("--output", default="outputs/evaluation/pre_eval_validation.jsonl")
-    parser.add_argument("--max-new-tokens", type=int, default=180)
+    parser.add_argument("--max-new-tokens", type=int, default=300)
     parser.add_argument("--temperature", type=float, default=0.7)
     parser.add_argument("--top-p", type=float, default=0.9)
     parser.add_argument("--claim", action="append", help="Claim to test. Can be repeated.")
