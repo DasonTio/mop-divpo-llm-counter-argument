@@ -65,6 +65,10 @@ def add_supported_trainer_kwargs(
     """Forward DPO kwargs to DPOTrainer when the installed TRL expects them there."""
     supported, unsupported = split_supported_kwargs(DPOTrainer.__init__, trainer_candidates)
     trainer_kwargs.update(supported)
+    optional_unsupported = {"group_by_length", "max_prompt_length"}
+    unsupported = {
+        k: v for k, v in unsupported.items() if k not in optional_unsupported
+    }
     if unsupported:
         ignored = ", ".join(sorted(unsupported))
         warnings.warn(
@@ -125,7 +129,7 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
 
     base = AutoModelForCausalLM.from_pretrained(
         BASE_MODEL,
-        torch_dtype=torch.float16,
+        dtype=torch.float16,
         attn_implementation="sdpa",
         **device_kwargs,
         token=token,
@@ -143,7 +147,7 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
     # Reference model (frozen SFT — DPO needs it for KL constraint)
     ref_base = AutoModelForCausalLM.from_pretrained(
         BASE_MODEL,
-        torch_dtype=torch.float16,
+        dtype=torch.float16,
         attn_implementation="sdpa",
         **device_kwargs,
         token=token,
@@ -178,7 +182,7 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
         "gradient_accumulation_steps": args.grad_accum,
         "learning_rate": args.lr,
         "lr_scheduler_type": "cosine",
-        "warmup_ratio": 0.05,
+        "warmup_steps": 1,
         "weight_decay": 0.01,
         "fp16": True,
         "logging_steps": 10,
@@ -187,7 +191,7 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
         "report_to": "none",
         "beta": 0.1,
         "max_prompt_length": 256,
-        "max_length": 512,
+        "max_length": args.max_length,
         # --- performance ---
         "optim": "adamw_torch_fused",       # fused kernel: ~10% faster than default AdamW
         "group_by_length": True,            # batch similar-length seqs -> less padding waste
@@ -225,16 +229,22 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
         print(f"  Pushed → {url}")
 
 
-def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Train per-persona DivPO adapters.")
     parser.add_argument("--persona", choices=PERSONA_IDS)
     parser.add_argument("--all", action="store_true")
     parser.add_argument("--epochs", type=int, default=2)
     parser.add_argument("--lr", type=float, default=5e-5)
-    parser.add_argument("--batch-size", type=int, default=8)   # doubled for T4 (was 4)
-    parser.add_argument("--grad-accum", type=int, default=4)   # halved; effective batch stays 32
+    parser.add_argument("--batch-size", type=int, default=1)
+    parser.add_argument("--grad-accum", type=int, default=32)
+    parser.add_argument("--max-length", type=int, default=384)
     parser.add_argument("--token", default=None)
     parser.add_argument("--no-push", action="store_true")
+    return parser
+
+
+def main() -> None:
+    parser = build_parser()
     args = parser.parse_args()
 
     if not args.persona and not args.all:

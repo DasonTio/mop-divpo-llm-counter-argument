@@ -4,10 +4,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from train_divpo import add_supported_trainer_kwargs, split_supported_kwargs
+from train_divpo import add_supported_trainer_kwargs, build_parser, split_supported_kwargs
 
 
 class TrainDivPOCompatibilityTests(unittest.TestCase):
+    def test_default_training_args_are_t4_safe_for_dpo_reference_forward(self):
+        args = build_parser().parse_args(["--persona", "systems_thinker"])
+
+        self.assertEqual(args.batch_size, 1)
+        self.assertEqual(args.grad_accum, 32)
+        self.assertEqual(args.max_length, 384)
+
     def test_split_supported_kwargs_keeps_supported_config_args(self):
         class ModernDPOConfig:
             def __init__(self, output_dir, beta, max_prompt_length, max_length):
@@ -95,6 +102,23 @@ class TrainDivPOCompatibilityTests(unittest.TestCase):
         self.assertEqual(trainer_kwargs["max_prompt_length"], 256)
         self.assertEqual(trainer_kwargs["max_length"], 512)
         self.assertNotIn("unknown_future_arg", trainer_kwargs)
+
+    def test_add_supported_trainer_kwargs_ignores_known_optional_unsupported_args(self):
+        class CurrentDPOTrainer:
+            def __init__(self, model, args):
+                pass
+
+        trainer_kwargs = {"model": object(), "args": object()}
+        add_supported_trainer_kwargs(
+            trainer_kwargs,
+            CurrentDPOTrainer,
+            {
+                "group_by_length": True,
+                "max_prompt_length": 256,
+            },
+        )
+
+        self.assertEqual(set(trainer_kwargs), {"model", "args"})
 
 
 if __name__ == "__main__":
