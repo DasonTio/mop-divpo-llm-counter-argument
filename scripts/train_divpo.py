@@ -108,13 +108,18 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
     device_kwargs: dict = {} if use_ddp else {"device_map": {"": 0}}
 
     # --- Data ---
-    print("Loading DivPO dataset from HF Hub...", flush=True)
-    ds = load_dataset(
-        DIVPO_DATA_REPO,
-        data_files={"train": f"{persona}.jsonl"},
-        split="train",
-        token=token,
-    )
+    if args.dataset_dir:
+        dataset_path = Path(args.dataset_dir) / f"{persona}.jsonl"
+        print(f"Loading DivPO dataset from local file {dataset_path}...", flush=True)
+        ds = load_dataset("json", data_files={"train": str(dataset_path)}, split="train")
+    else:
+        print("Loading DivPO dataset from HF Hub...", flush=True)
+        ds = load_dataset(
+            DIVPO_DATA_REPO,
+            data_files={"train": f"{persona}.jsonl"},
+            split="train",
+            token=token,
+        )
     print(f"  {len(ds)} preference pairs")
 
     # --- Tokenizer ---
@@ -174,7 +179,7 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
     model.print_trainable_parameters()
 
     # --- Training ---
-    output_dir = f"outputs/adapters/divpo/{persona}"
+    output_dir = f"outputs/adapters/{args.output_stage}/{persona}"
     dpo_config_kwargs = {
         "output_dir": output_dir,
         "num_train_epochs": args.epochs,
@@ -223,8 +228,8 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
     print(f"  Adapter saved to {output_dir}")
 
     if not args.no_push:
-        print(f"Pushing to {MODEL_REPO}/divpo/{persona} ...", flush=True)
-        url = push_adapter(output_dir, "divpo", persona, token)
+        print(f"Pushing to {MODEL_REPO}/{args.output_stage}/{persona} ...", flush=True)
+        url = push_adapter(output_dir, args.output_stage, persona, token)
         print(f"  Pushed → {url}")
 
 
@@ -237,6 +242,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--grad-accum", type=int, default=32)
     parser.add_argument("--max-length", type=int, default=384)
+    parser.add_argument("--dataset-dir", default=None,
+                        help="Local directory containing {persona}.jsonl DivPO files.")
+    parser.add_argument("--output-stage", default="divpo",
+                        help="Hub/output stage name, e.g. divpo or divpo_v2.")
     parser.add_argument("--token", default=None)
     parser.add_argument("--no-push", action="store_true")
     return parser

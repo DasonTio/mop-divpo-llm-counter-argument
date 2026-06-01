@@ -12,6 +12,7 @@ from mop_divpo.metrics.semantic import (
     mean_pairwise_cosine,
     pairwise_cosine_matrix,
 )
+from mop_divpo.divpo.pairs import select_pair
 
 
 class DiversityTests(unittest.TestCase):
@@ -72,6 +73,27 @@ class SemanticTests(unittest.TestCase):
         a = np.zeros((0, 2), dtype=np.float32)
         b = np.array([[1.0, 0.0]], dtype=np.float32)
         self.assertEqual(cross_group_mean_cosine(a, b), 0.0)
+
+
+class DivPOPairTests(unittest.TestCase):
+    def test_select_pair_rejects_pairs_below_rarity_margin(self):
+        class FakeEmbedder:
+            pass
+
+        pair = select_pair(
+            "prompt",
+            ["candidate alpha words", "candidate beta words"],
+            FakeEmbedder(),
+            min_quality=0.0,
+            min_rarity_margin=0.5,
+            _prompt_emb=np.array([1.0, 0.0], dtype=np.float32),
+            _cand_embs=[
+                np.array([1.0, 0.0], dtype=np.float32),
+                np.array([0.9, 0.1], dtype=np.float32),
+            ],
+        )
+
+        self.assertIsNone(pair)
 
 
 if __name__ == "__main__":

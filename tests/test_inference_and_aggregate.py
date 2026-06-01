@@ -33,6 +33,12 @@ class AdapterChainTests(unittest.TestCase):
             ["sft/minimalist", "divpo/minimalist"],
         )
 
+    def test_divpo_v2_stacks_sft_then_divpo_v2(self):
+        self.assertEqual(
+            adapter_chain("divpo_v2", "minimalist"),
+            ["sft/minimalist", "divpo_v2/minimalist"],
+        )
+
     def test_single_uses_single_name(self):
         self.assertEqual(adapter_chain("single", None, single_name="all"), ["single/all"])
 

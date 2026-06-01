@@ -36,6 +36,7 @@ def select_pair(
     candidates: list[str],
     embedder,
     min_quality: float = 0.35,
+    min_rarity_margin: float = 0.0,
     quality_weight: float = 0.4,
     rarity_weight: float = 0.6,
     persona: str = "",
@@ -72,6 +73,8 @@ def select_pair(
 
     if chosen.text == rejected.text:
         return None
+    if chosen.rarity - rejected.rarity < min_rarity_margin:
+        return None
 
     return DivPORecord(
         prompt=prompt,
@@ -86,6 +89,7 @@ def select_pair(
             "quality_weight": quality_weight,
             "rarity_weight": rarity_weight,
             "min_quality": min_quality,
+            "min_rarity_margin": min_rarity_margin,
             "candidates_per_prompt": candidates_per_prompt,
         },
     )
@@ -96,6 +100,7 @@ def select_pairs_batch(
     candidates_batch: list[list[str]],
     embedder,
     min_quality: float = 0.35,
+    min_rarity_margin: float = 0.0,
     quality_weight: float = 0.4,
     rarity_weight: float = 0.6,
     persona: str = "",
@@ -127,6 +132,7 @@ def select_pairs_batch(
             candidates=candidates,
             embedder=embedder,
             min_quality=min_quality,
+            min_rarity_margin=min_rarity_margin,
             quality_weight=quality_weight,
             rarity_weight=rarity_weight,
             persona=persona,

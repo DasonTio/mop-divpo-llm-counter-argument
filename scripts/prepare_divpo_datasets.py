@@ -317,6 +317,7 @@ def run_persona(persona: str, args: argparse.Namespace, token: str) -> None:
             candidates_batch=valid_candidates,
             embedder=embedder,
             min_quality=args.min_quality,
+            min_rarity_margin=args.min_rarity_margin,
             quality_weight=args.quality_weight,
             rarity_weight=args.rarity_weight,
             persona=persona,
@@ -370,6 +371,7 @@ def main() -> None:
     parser.add_argument("--output-dir", default="data/processed/divpo")
     parser.add_argument("--base-model", default="Qwen/Qwen2.5-0.5B-Instruct")
     parser.add_argument("--min-quality", type=float, default=0.35)
+    parser.add_argument("--min-rarity-margin", type=float, default=0.0)
     parser.add_argument("--quality-weight", type=float, default=0.4)
     parser.add_argument("--rarity-weight", type=float, default=0.6)
     parser.add_argument("--temperature", type=float, default=0.9)

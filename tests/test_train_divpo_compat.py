@@ -14,6 +14,23 @@ class TrainDivPOCompatibilityTests(unittest.TestCase):
         self.assertEqual(args.batch_size, 1)
         self.assertEqual(args.grad_accum, 32)
         self.assertEqual(args.max_length, 384)
+        self.assertIsNone(args.dataset_dir)
+        self.assertEqual(args.output_stage, "divpo")
+
+    def test_can_target_local_dataset_and_new_output_stage(self):
+        args = build_parser().parse_args(
+            [
+                "--persona",
+                "systems_thinker",
+                "--dataset-dir",
+                "data/processed/divpo_v2",
+                "--output-stage",
+                "divpo_v2",
+            ]
+        )
+
+        self.assertEqual(args.dataset_dir, "data/processed/divpo_v2")
+        self.assertEqual(args.output_stage, "divpo_v2")
 
     def test_split_supported_kwargs_keeps_supported_config_args(self):
         class ModernDPOConfig:

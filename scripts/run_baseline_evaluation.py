@@ -38,6 +38,7 @@ METHODS = {
     "single_lora": {"stage": "single", "use_persona_prompt": True,  "per_persona": True},
     "mop_sft":     {"stage": "sft",    "use_persona_prompt": True,  "per_persona": True},
     "mop_divpo":   {"stage": "divpo",  "use_persona_prompt": True,  "per_persona": True},
+    "mop_divpo_v2": {"stage": "divpo_v2", "use_persona_prompt": True, "per_persona": True},
 }
 HEADLINE = "mop_divpo"
 

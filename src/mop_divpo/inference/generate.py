@@ -34,7 +34,7 @@ BASE_MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
 MODEL_REPO = "DasonTio/mop-divpo-coauthor"
 PERSONA_IDS = ["contrarian", "systems_thinker", "cross_domain_analogist", "minimalist"]
 
-VALID_STAGES = {"base", "sft", "divpo", "single"}
+VALID_STAGES = {"base", "sft", "divpo", "divpo_v2", "single"}
 
 COUNTER_ARGUMENT_TEMPLATE = "Generate a counter-argument to this claim:\n\n{prompt}"
 
@@ -68,8 +68,8 @@ def adapter_chain(stage: str, persona: str | None, single_name: str = "all") -> 
         raise ValueError(f"stage={stage!r} requires a persona.")
     if stage == "sft":
         return [f"sft/{persona}"]
-    # divpo: SFT adapter first, DivPO adapter stacked on top.
-    return [f"sft/{persona}", f"divpo/{persona}"]
+    # divpo variants: SFT adapter first, DivPO adapter stacked on top.
+    return [f"sft/{persona}", f"{stage}/{persona}"]
 
 
 def build_messages(
