@@ -7,6 +7,7 @@ from pathlib import Path
 HF_TOKEN_ENV = "HF_TOKEN"
 SFT_DATA_REPO = "DasonTio/mop-divpo-sft-data"
 DIVPO_DATA_REPO = "DasonTio/mop-divpo-divpo-data"
+DIVPO_V2_DATA_REPO = "DasonTio/mop-divpo-divpo-v2-data"
 MODEL_REPO = "DasonTio/mop-divpo-coauthor"
 PERSONA_IDS = ["contrarian", "systems_thinker", "cross_domain_analogist", "minimalist"]
 
@@ -60,6 +61,22 @@ def push_divpo_file(persona: str, jsonl_path: str | Path, token: str) -> str:
         repo_type="dataset",
         token=token,
         commit_message=f"Add DivPO data for {persona}",
+    )
+    return str(url)
+
+
+def push_divpo_v2_file(persona: str, jsonl_path: str | Path, token: str) -> str:
+    """Upload one persona JSONL to the DivPO v2 (cross-persona) dataset repo."""
+    from huggingface_hub import upload_file
+
+    ensure_dataset_repo(DIVPO_V2_DATA_REPO, token)
+    url = upload_file(
+        path_or_fileobj=str(jsonl_path),
+        path_in_repo=f"{persona}.jsonl",
+        repo_id=DIVPO_V2_DATA_REPO,
+        repo_type="dataset",
+        token=token,
+        commit_message=f"Add DivPO v2 (cross-persona) data for {persona}",
     )
     return str(url)
 

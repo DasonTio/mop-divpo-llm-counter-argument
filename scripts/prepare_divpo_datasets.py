@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from mop_divpo.data.writers import write_json, write_jsonl
-from mop_divpo.divpo.pairs import select_pair, select_pairs_batch
+from mop_divpo.divpo.pairs import select_pair, select_pairs_batch, select_pairs_cross_persona_batch
 
 PERSONA_IDS = ["contrarian", "systems_thinker", "cross_domain_analogist", "minimalist"]
 
@@ -361,10 +361,140 @@ def run_persona(persona: str, args: argparse.Namespace, token: str) -> None:
         print(f"  Pushed → {url}")
 
 
+def run_cross_persona(args: argparse.Namespace, token: str) -> None:
+    """DivPO v2 — cross-persona pair selection on a shared prompt pool.
+
+    Phase 1: Generate N candidates per prompt for EACH persona (sequential, one
+             model in VRAM at a time).
+    Phase 2: SBERT-encode all candidates together; compute rarity for each
+             candidate against the FULL cross-persona pool (not just same-persona
+             siblings).  Select chosen/rejected within each persona's subset.
+    Phase 3: Write one JSONL per persona to output_dir.
+    """
+    import torch
+    from sentence_transformers import SentenceTransformer
+    from personas import PERSONAS
+
+    sft_dir = Path(args.prompt_pool)
+    output_dir = Path(args.output_dir)
+    checks_dir = Path("outputs/data_checks")
+
+    # Build shared prompt pool: intersection of all 4 persona SFT datasets.
+    # All SFT datasets come from the same CMV corpus, so the overlap is large.
+    persona_prompt_lists: dict[str, list[str]] = {}
+    for persona in PERSONA_IDS:
+        persona_prompt_lists[persona] = _load_prompt_pool(persona, sft_dir, max_prompts=args.limit * 2)
+
+    shared_set = set(persona_prompt_lists[PERSONA_IDS[0]])
+    for persona in PERSONA_IDS[1:]:
+        shared_set &= set(persona_prompt_lists[persona])
+
+    # Preserve order from the first persona's list.
+    prompts = [p for p in persona_prompt_lists[PERSONA_IDS[0]] if p in shared_set]
+    if args.limit:
+        prompts = prompts[: args.limit]
+    print(f"  Shared prompts: {len(prompts)}")
+
+    # ── Phase 1: Generate candidates persona by persona ──────────────────────
+    all_candidates_per_persona: dict[str, list[list[str]]] = {}
+
+    for persona in PERSONA_IDS:
+        adapter_path = _resolve_adapter(
+            persona, adapter_dir=Path(args.adapter_dir),
+            from_hub=args.from_hub, token=token,
+        )
+        system_prompt = PERSONAS[persona]["system_prompt"]
+        torch.backends.cudnn.benchmark = True
+        model, tokenizer = _load_model(adapter_path, args.base_model, token)
+        print(f"  [{persona}] generating for {len(prompts)} prompts...", flush=True)
+
+        persona_cands: list[list[str]] = []
+        batch_size = args.gen_batch_size
+        for batch_start in range(0, len(prompts), batch_size):
+            batch = prompts[batch_start: batch_start + batch_size]
+            try:
+                batch_out = _generate_candidates_batch(
+                    batch, system_prompt, model, tokenizer,
+                    args.candidate_count, args.temperature, args.top_p, args.max_new_tokens,
+                )
+            except Exception as exc:
+                print(f"  WARNING batch failed, serial fallback: {exc}", flush=True)
+                batch_out = []
+                for p in batch:
+                    try:
+                        cands = _generate_candidates(
+                            p, system_prompt, model, tokenizer,
+                            args.candidate_count, args.temperature, args.top_p, args.max_new_tokens,
+                        )
+                        batch_out.append(cands)
+                    except Exception:
+                        batch_out.append([])
+            persona_cands.extend(batch_out)
+
+        del model
+        torch.cuda.empty_cache()
+        all_candidates_per_persona[persona] = persona_cands
+        print(f"  [{persona}] done.", flush=True)
+
+    # ── Phase 2: Cross-persona scoring ───────────────────────────────────────
+    n_gpu = torch.cuda.device_count()
+    embedder_device = "cuda:0" if n_gpu >= 1 else "cpu"
+    embedder = SentenceTransformer("all-MiniLM-L6-v2", device=embedder_device)
+    print("  Cross-persona pair selection...", flush=True)
+
+    results = select_pairs_cross_persona_batch(
+        prompts=prompts,
+        candidates_per_persona=all_candidates_per_persona,
+        embedder=embedder,
+        min_quality=args.min_quality,
+        min_rarity_margin=args.min_rarity_margin,
+        quality_weight=args.quality_weight,
+        rarity_weight=args.rarity_weight,
+        candidates_per_prompt=args.candidate_count,
+    )
+
+    # ── Phase 3: Write ────────────────────────────────────────────────────────
+    output_dir.mkdir(parents=True, exist_ok=True)
+    checks_dir.mkdir(parents=True, exist_ok=True)
+
+    for persona in PERSONA_IDS:
+        persona_records = [r.to_dict() for r in results[persona] if r is not None]
+        skipped = sum(1 for r in results[persona] if r is None)
+
+        output_path = output_dir / f"{persona}.jsonl"
+        write_jsonl(persona_records, output_path)
+        print(f"  [{persona}] {len(persona_records)} pairs → {output_path} ({skipped} skipped)")
+
+        if persona_records:
+            avg_cq = round(
+                sum(r["metadata"]["chosen_quality"] for r in persona_records) / len(persona_records), 4
+            )
+            avg_cr = round(
+                sum(r["metadata"]["chosen_rarity"] for r in persona_records) / len(persona_records), 4
+            )
+            write_json(
+                {
+                    "persona": persona, "mode": "cross_persona",
+                    "total_pairs": len(persona_records), "total_skipped": skipped,
+                    "avg_chosen_quality": avg_cq, "avg_chosen_rarity": avg_cr,
+                },
+                checks_dir / f"divpo_v2_summary_{persona}.json",
+            )
+            _write_divpo_examples(persona, persona_records, checks_dir / "divpo_v2_examples.md")
+
+        if args.push and persona_records:
+            from mop_divpo.hub import push_divpo_v2_file
+            url = push_divpo_v2_file(persona, output_path, token)
+            print(f"  [{persona}] pushed → {url}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Prepare DivPO preference datasets.")
     parser.add_argument("--persona", choices=PERSONA_IDS)
     parser.add_argument("--all", action="store_true")
+    parser.add_argument("--cross-persona", action="store_true",
+                        help="v2: rarity computed against all-persona candidate pool. "
+                             "Recommended quality-weight=0.5 rarity-weight=0.5.")
     parser.add_argument("--candidate-count", type=int, default=4)
     parser.add_argument("--adapter-dir", default="outputs/adapters/sft")
     parser.add_argument("--prompt-pool", default="data/processed/sft")
@@ -394,15 +524,17 @@ def main() -> None:
     if args.push and not token:
         parser.error("--push requires --token or HF_TOKEN env var.")
 
-    if not args.persona and not args.all:
-        parser.error("Provide --persona <name> or --all.")
-
     _require_adapters()
 
-    personas = PERSONA_IDS if args.all else [args.persona]
-    for p in personas:
-        print(f"\n=== {p} ===")
-        run_persona(p, args, token)
+    if args.cross_persona:
+        run_cross_persona(args, token)
+    else:
+        if not args.persona and not args.all:
+            parser.error("Provide --persona <name> or --all (or use --cross-persona).")
+        personas = PERSONA_IDS if args.all else [args.persona]
+        for p in personas:
+            print(f"\n=== {p} ===")
+            run_persona(p, args, token)
 
     print("\nDone.")
 

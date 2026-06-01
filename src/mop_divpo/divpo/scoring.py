@@ -19,19 +19,32 @@ def score_quality(
     embedder,
     min_words: int = 10,
     max_words: int = 400,
+    include_relevance: bool = True,
     _prompt_emb: "np.ndarray | None" = None,
     _response_emb: "np.ndarray | None" = None,
 ) -> float:
     """Heuristic quality score in [0, 1].
 
-    Components: embedding relevance (50%), coherence proxy (30%), length (20%).
-    Returns 0.0 for responses outside word-count bounds.
-    Pass _prompt_emb/_response_emb to skip the encode call (batch path).
+    v1 (include_relevance=True):  relevance (50%) + coherence (30%) + length (20%).
+    v2 (include_relevance=False): coherence (60%) + length (40%).
+
+    Relevance = prompt-response cosine. For counter-argument generation this is
+    counterproductive: a strong counter-argument diverges semantically from the
+    prompt, so high relevance rewards paraphrase, not opposition. v2 drops it.
     """
     words = response.split()
     n = len(words)
     if n < min_words or n > max_words:
         return 0.0
+
+    repetitions = len(_REPETITION_RE.findall(response))
+    coherence = max(0.0, 1.0 - 0.25 * repetitions)
+
+    ideal = 100
+    length_score = min(n, ideal) / ideal if n <= ideal else ideal / n
+
+    if not include_relevance:
+        return 0.6 * coherence + 0.4 * length_score
 
     try:
         if _prompt_emb is not None and _response_emb is not None:
@@ -41,12 +54,6 @@ def score_quality(
             relevance = max(0.0, _cosine(embs[0], embs[1]))
     except Exception:
         relevance = 0.5
-
-    repetitions = len(_REPETITION_RE.findall(response))
-    coherence = max(0.0, 1.0 - 0.25 * repetitions)
-
-    ideal = 100
-    length_score = min(n, ideal) / ideal if n <= ideal else ideal / n
 
     return 0.5 * relevance + 0.3 * coherence + 0.2 * length_score
 

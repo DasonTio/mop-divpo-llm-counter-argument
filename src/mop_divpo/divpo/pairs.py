@@ -1,4 +1,13 @@
-"""DivPO preference pair construction from scored candidates."""
+"""DivPO preference pair construction from scored candidates.
+
+Two pair-selection strategies:
+  select_pairs_batch               — v1: rarity against within-persona siblings.
+  select_pairs_cross_persona_batch — v2: rarity against the full cross-persona pool.
+
+v2 aligns the training signal with the cross-persona SBERT-cosine metric used in
+evaluation. v1 optimised within-batch diversity which does not transfer to the
+cross-persona setting and empirically reduced cross-persona distinctness.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -140,4 +149,127 @@ def select_pairs_batch(
             _prompt_emb=prompt_emb,
             _cand_embs=cand_embs,
         ))
+    return results
+
+
+def select_pairs_cross_persona_batch(
+    prompts: list[str],
+    candidates_per_persona: dict[str, list[list[str]]],
+    embedder,
+    min_quality: float = 0.40,
+    min_rarity_margin: float = 0.0,
+    quality_weight: float = 0.5,
+    rarity_weight: float = 0.5,
+    candidates_per_prompt: int = 4,
+) -> dict[str, list[Optional[DivPORecord]]]:
+    """Cross-persona DivPO pair selection (v2).
+
+    For each prompt, all candidates from ALL personas are embedded together.
+    Rarity for each candidate is computed against the full cross-persona pool
+    (not just same-persona siblings). This directly aligns the DivPO training
+    signal with the cross-persona SBERT-cosine metric used at evaluation time.
+
+    Quality uses include_relevance=False: prompt-response cosine penalises
+    good counter-arguments (which must semantically oppose the prompt).
+
+    Args:
+        prompts: shared prompt list (must be the same order for all personas).
+        candidates_per_persona: {persona_id: [[cands per prompt_0], [cands per prompt_1], ...]}.
+        embedder: SentenceTransformer instance.
+
+    Returns:
+        {persona_id: [Optional[DivPORecord] per prompt]}.
+    """
+    import numpy as np
+
+    persona_ids = list(candidates_per_persona.keys())
+    results: dict[str, list[Optional[DivPORecord]]] = {p: [] for p in persona_ids}
+
+    for prompt_idx, prompt in enumerate(prompts):
+        # Flatten all candidates from all personas for this prompt.
+        all_cands: list[str] = []
+        persona_slices: dict[str, tuple[int, int]] = {}
+        for persona in persona_ids:
+            per_prompt = candidates_per_persona[persona]
+            cands = per_prompt[prompt_idx] if prompt_idx < len(per_prompt) else []
+            start = len(all_cands)
+            all_cands.extend(cands)
+            persona_slices[persona] = (start, len(all_cands))
+
+        if not all_cands:
+            for persona in persona_ids:
+                results[persona].append(None)
+            continue
+
+        # One encode call: [prompt] + all candidates from all personas.
+        all_texts = [prompt] + all_cands
+        all_embs: np.ndarray = embedder.encode(all_texts, convert_to_numpy=True, batch_size=64)
+        prompt_emb = all_embs[0]
+        cand_embs = list(all_embs[1:])  # aligned with all_cands
+
+        for persona in persona_ids:
+            start, end = persona_slices[persona]
+            persona_cands = all_cands[start:end]
+            persona_embs = cand_embs[start:end]
+
+            if len(persona_cands) < 2:
+                results[persona].append(None)
+                continue
+
+            scored: list[ScoredCandidate] = []
+            for local_i, (cand, cand_emb) in enumerate(zip(persona_cands, persona_embs)):
+                global_i = start + local_i
+                # Quality: no relevance term (see module docstring).
+                q = score_quality(
+                    prompt, cand, embedder,
+                    include_relevance=False,
+                    _prompt_emb=prompt_emb,
+                    _response_emb=cand_emb,
+                )
+                # Rarity: against ALL candidates from ALL personas (cross-persona).
+                other_embs = [e for j, e in enumerate(cand_embs) if j != global_i]
+                r = score_rarity(
+                    cand, [], embedder,
+                    _response_emb=cand_emb,
+                    _other_embs=other_embs,
+                )
+                scored.append(ScoredCandidate(
+                    text=cand, quality=q, rarity=r,
+                    combined=quality_weight * q + rarity_weight * r,
+                ))
+
+            eligible = [s for s in scored if s.quality >= min_quality]
+            if len(eligible) < 2:
+                results[persona].append(None)
+                continue
+
+            chosen = max(eligible, key=lambda s: s.combined)
+            rejected = min(eligible, key=lambda s: s.combined)
+
+            if chosen.text == rejected.text:
+                results[persona].append(None)
+                continue
+            if chosen.rarity - rejected.rarity < min_rarity_margin:
+                results[persona].append(None)
+                continue
+
+            results[persona].append(DivPORecord(
+                prompt=prompt,
+                chosen=chosen.text,
+                rejected=rejected.text,
+                metadata={
+                    "persona": persona,
+                    "chosen_quality": round(chosen.quality, 4),
+                    "chosen_rarity": round(chosen.rarity, 4),
+                    "rejected_quality": round(rejected.quality, 4),
+                    "rejected_rarity": round(rejected.rarity, 4),
+                    "quality_weight": quality_weight,
+                    "rarity_weight": rarity_weight,
+                    "min_quality": min_quality,
+                    "min_rarity_margin": min_rarity_margin,
+                    "candidates_per_prompt": candidates_per_prompt,
+                    "cross_persona": True,
+                },
+            ))
+
     return results
