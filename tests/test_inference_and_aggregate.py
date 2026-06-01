@@ -17,6 +17,7 @@ from mop_divpo.eval.aggregate import (
     summarize,
 )
 from scripts.experiment_persona_distinctness import compute_prompt_conditioned_matrix
+from scripts.run_baseline_evaluation import filter_records_to_prompts
 
 
 class AdapterChainTests(unittest.TestCase):
@@ -180,6 +181,20 @@ class PersonaDistinctnessTests(unittest.TestCase):
         self.assertEqual(matrix["b"]["b"], 1.0)
         self.assertAlmostEqual(matrix["a"]["b"], 1.0)
         self.assertAlmostEqual(matrix["b"]["a"], 1.0)
+
+
+class BaselineRunnerTests(unittest.TestCase):
+    def test_filter_records_to_prompts_keeps_only_requested_prompt_set(self):
+        records = [
+            {"method": "base", "prompt": "p1", "output": "a"},
+            {"method": "mop_sft", "prompt": "p1", "output": "b"},
+            {"method": "base", "prompt": "p2", "output": "c"},
+            {"method": "mop_sft", "prompt": "p3", "output": "d"},
+        ]
+
+        filtered = filter_records_to_prompts(records, ["p1", "p3"])
+
+        self.assertEqual([record["prompt"] for record in filtered], ["p1", "p1", "p3"])
 
 
 if __name__ == "__main__":

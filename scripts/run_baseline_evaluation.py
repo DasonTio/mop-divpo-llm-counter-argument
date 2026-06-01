@@ -99,6 +99,12 @@ def read_jsonl(path: Path) -> list[dict]:
         return [json.loads(line) for line in f if line.strip()]
 
 
+def filter_records_to_prompts(records: list[dict], prompts: list[str]) -> list[dict]:
+    """Keep records whose prompt is in the selected evaluation prompt list."""
+    selected = set(prompts)
+    return [record for record in records if record["prompt"] in selected]
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Phase 3 baseline evaluation table.")
     p.add_argument("--methods", nargs="+", default=list(METHODS), choices=list(METHODS))
@@ -128,6 +134,7 @@ def main() -> None:
     # --- 1. Generation ---
     if args.skip_generation:
         records = read_jsonl(gen_path)
+        records = filter_records_to_prompts(records, prompts)
         print(f"Loaded {len(records)} generations from {gen_path}")
     else:
         print(f"Generating outputs for {args.methods} on {len(prompts)} prompts ...")
