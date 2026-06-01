@@ -39,7 +39,36 @@ def _require_adapters() -> None:
         sys.exit(1)
 
 
-def _load_prompt_pool(persona: str, sft_dir: Path, max_prompts: int) -> list[str]:
+_CA_PREFIX = "Generate a counter-argument to this claim:\n\n"
+_SENT_SPLIT = __import__("re").compile(r"(?<=[.!?])\s+")
+
+
+def _truncate_claim(user_text: str, max_sentences: int) -> str:
+    """Shorten the claim body to max_sentences to reduce CMV post verbosity.
+
+    CMV posts are long Reddit threads; evaluation prompts are short clean
+    propositions. Truncating to 1-2 sentences closes the domain gap without
+    changing the counter-argument template format.
+    """
+    if not user_text.startswith(_CA_PREFIX):
+        return user_text
+    claim = user_text[len(_CA_PREFIX):].strip()
+    sentences = _SENT_SPLIT.split(claim)
+    shortened = " ".join(sentences[:max_sentences]).strip()
+    return _CA_PREFIX + shortened
+
+
+def _load_prompt_pool(
+    persona: str,
+    sft_dir: Path,
+    max_prompts: int,
+    truncate_claim_sentences: int = 0,
+) -> list[str]:
+    """Load prompts from a persona's SFT JSONL file.
+
+    truncate_claim_sentences > 0: keep only the first N sentences of each
+    claim (recommended for CMV data to align with clean evaluation prompts).
+    """
     sft_path = sft_dir / f"{persona}.jsonl"
     if not sft_path.exists():
         raise FileNotFoundError(
@@ -56,6 +85,8 @@ def _load_prompt_pool(persona: str, sft_dir: Path, max_prompts: int) -> list[str
                 msgs = rec.get("messages", [])
                 user_text = next((m["content"] for m in msgs if m["role"] == "user"), None)
                 if user_text:
+                    if truncate_claim_sentences > 0:
+                        user_text = _truncate_claim(user_text, truncate_claim_sentences)
                     prompts.append(user_text)
             except json.JSONDecodeError:
                 continue
@@ -384,8 +415,13 @@ def run_cross_persona(args: argparse.Namespace, token: str) -> None:
     # Use the reference persona's prompt pool for ALL personas — defaults to "contrarian"
     # (CGA-CMV), which is the natural domain for counter-argument generation.
     ref_persona = args.shared_prompt_persona
-    prompts = _load_prompt_pool(ref_persona, sft_dir, max_prompts=args.limit)
-    print(f"  Shared prompts from '{ref_persona}': {len(prompts)}")
+    prompts = _load_prompt_pool(
+        ref_persona, sft_dir,
+        max_prompts=args.limit,
+        truncate_claim_sentences=args.truncate_claim,
+    )
+    print(f"  Shared prompts from '{ref_persona}' "
+          f"(truncate={args.truncate_claim or 'off'}): {len(prompts)}")
 
     # ── Phase 1: Generate candidates persona by persona ──────────────────────
     all_candidates_per_persona: dict[str, list[list[str]]] = {}
@@ -493,6 +529,11 @@ def main() -> None:
                         help="(--cross-persona only) Which persona's SFT prompt pool "
                              "to use as the shared source for all 4 personas. "
                              "Default: contrarian (CGA-CMV counter-argument data).")
+    parser.add_argument("--truncate-claim", type=int, default=0, metavar="N",
+                        help="Truncate CMV claim body to first N sentences before "
+                             "generation. Closes train/eval domain gap (CMV posts "
+                             "are verbose; eval prompts are clean propositions). "
+                             "Recommended: 2. Default: 0 (disabled).")
     parser.add_argument("--candidate-count", type=int, default=4)
     parser.add_argument("--adapter-dir", default="outputs/adapters/sft")
     parser.add_argument("--prompt-pool", default="data/processed/sft")
