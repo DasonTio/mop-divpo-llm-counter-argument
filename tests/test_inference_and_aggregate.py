@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from mop_divpo.inference.generate import adapter_chain, build_messages
 from mop_divpo.eval.aggregate import (
@@ -15,6 +16,7 @@ from mop_divpo.eval.aggregate import (
     per_prompt_judge_metrics,
     summarize,
 )
+from scripts.experiment_persona_distinctness import compute_prompt_conditioned_matrix
 
 
 class AdapterChainTests(unittest.TestCase):
@@ -144,6 +146,40 @@ class AggregateTests(unittest.TestCase):
         csv = build_csv(summary, ["base"])
         self.assertIn("method,self_bleu", csv)
         self.assertIn("base,0.5000", csv)
+
+
+class PersonaDistinctnessTests(unittest.TestCase):
+    def test_matrix_compares_personas_within_same_prompt_before_averaging(self):
+        records = [
+            {"prompt_id": 0, "persona": "a", "text": "p0 a one"},
+            {"prompt_id": 0, "persona": "a", "text": "p0 a two"},
+            {"prompt_id": 0, "persona": "b", "text": "p0 b one"},
+            {"prompt_id": 0, "persona": "b", "text": "p0 b two"},
+            {"prompt_id": 1, "persona": "a", "text": "p1 a one"},
+            {"prompt_id": 1, "persona": "a", "text": "p1 a two"},
+            {"prompt_id": 1, "persona": "b", "text": "p1 b one"},
+            {"prompt_id": 1, "persona": "b", "text": "p1 b two"},
+        ]
+
+        def fake_embed(texts):
+            mapping = {
+                "p0 a one": [1.0, 0.0],
+                "p0 a two": [1.0, 0.0],
+                "p0 b one": [1.0, 0.0],
+                "p0 b two": [1.0, 0.0],
+                "p1 a one": [0.0, 1.0],
+                "p1 a two": [0.0, 1.0],
+                "p1 b one": [0.0, 1.0],
+                "p1 b two": [0.0, 1.0],
+            }
+            return np.array([mapping[text] for text in texts], dtype=np.float32)
+
+        matrix = compute_prompt_conditioned_matrix(records, ["a", "b"], fake_embed)
+
+        self.assertEqual(matrix["a"]["a"], 1.0)
+        self.assertEqual(matrix["b"]["b"], 1.0)
+        self.assertAlmostEqual(matrix["a"]["b"], 1.0)
+        self.assertAlmostEqual(matrix["b"]["a"], 1.0)
 
 
 if __name__ == "__main__":

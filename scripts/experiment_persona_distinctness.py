@@ -39,6 +39,42 @@ def classify(value: float) -> tuple[str, str]:
     return DECISION_RULE[-1][1], DECISION_RULE[-1][2]
 
 
+def compute_prompt_conditioned_matrix(records: list[dict], personas: list[str], embed_fn) -> dict[str, dict[str, float]]:
+    """Compute inter-persona cosine within each prompt, then average prompts.
+
+    This matches docs/research-plan.md §1.4. Pooling all prompts per persona
+    would compare unrelated topics and artificially lower off-diagonal scores.
+    """
+    from mop_divpo.metrics.semantic import cross_group_mean_cosine
+
+    by_prompt: dict[int, dict[str, list[str]]] = {}
+    for record in records:
+        by_prompt.setdefault(record["prompt_id"], {}).setdefault(record["persona"], []).append(
+            record["text"]
+        )
+
+    pair_scores: dict[tuple[str, str], list[float]] = {
+        tuple(sorted((a, b))): [] for a, b in itertools.combinations(personas, 2)
+    }
+    for groups in by_prompt.values():
+        embeddings = {persona: embed_fn(groups[persona]) for persona in personas}
+        for a, b in itertools.combinations(personas, 2):
+            key = tuple(sorted((a, b)))
+            pair_scores[key].append(cross_group_mean_cosine(embeddings[a], embeddings[b]))
+
+    matrix: dict[str, dict[str, float]] = {}
+    for a in personas:
+        matrix[a] = {}
+        for b in personas:
+            if a == b:
+                matrix[a][b] = 1.0
+            else:
+                key = tuple(sorted((a, b)))
+                values = pair_scores[key]
+                matrix[a][b] = round(sum(values) / len(values), 4) if values else 0.0
+    return matrix
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Phase 1 persona distinctness experiment.")
     p.add_argument("--stage", default="divpo", choices=["sft", "divpo"],
@@ -68,8 +104,6 @@ def main() -> None:
 
     gen = MoPGenerator(adapter_stage=args.stage, token=token, use_persona_prompt=True)
 
-    # outputs_by_persona[persona] = list of generated strings (across all prompts)
-    outputs_by_persona: dict[str, list[str]] = {p: [] for p in args.personas}
     records: list[dict] = []
     try:
         for prompt_id, prompt in enumerate(prompts):
@@ -82,7 +116,6 @@ def main() -> None:
                     max_new_tokens=args.max_new_tokens,
                 )
                 for idx, text in enumerate(texts):
-                    outputs_by_persona[persona].append(text)
                     records.append(
                         {"prompt_id": prompt_id, "prompt": prompt,
                          "persona": persona, "output_index": idx, "text": text}
@@ -93,17 +126,7 @@ def main() -> None:
         gen.unload()
 
     print("\nEmbedding outputs with SBERT ...", flush=True)
-    embeddings = {p: embed(outputs_by_persona[p]) for p in args.personas}
-
-    # 4x4 matrix: diagonal = 1.0, off-diagonal = mean cross-persona cosine.
-    matrix: dict[str, dict[str, float]] = {}
-    for a in args.personas:
-        matrix[a] = {}
-        for b in args.personas:
-            if a == b:
-                matrix[a][b] = 1.0
-            else:
-                matrix[a][b] = round(cross_group_mean_cosine(embeddings[a], embeddings[b]), 4)
+    matrix = compute_prompt_conditioned_matrix(records, args.personas, embed)
 
     pair_findings = []
     for a, b in itertools.combinations(args.personas, 2):
