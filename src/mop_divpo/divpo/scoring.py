@@ -69,16 +69,21 @@ def score_rarity(
 
     Falls back to 1.0 if no peers, 0.5 on embedding failure.
     Pass _response_emb/_other_embs to skip the encode call (batch path).
+
+    When pre-computed embeddings are supplied they take priority over `others`
+    so the early-return check on `others` is skipped.
     """
-    if not others:
-        return 1.0
     try:
         if _response_emb is not None and _other_embs is not None:
+            if not _other_embs:
+                return 1.0
             sims = [_cosine(_response_emb, e) for e in _other_embs]
-        else:
-            embs = embedder.encode([response] + others, convert_to_numpy=True)
-            target = embs[0]
-            sims = [_cosine(target, embs[i + 1]) for i in range(len(others))]
+            return max(0.0, 1.0 - float(np.mean(sims)))
+        if not others:
+            return 1.0
+        embs = embedder.encode([response] + others, convert_to_numpy=True)
+        target = embs[0]
+        sims = [_cosine(target, embs[i + 1]) for i in range(len(others))]
         return max(0.0, 1.0 - float(np.mean(sims)))
     except Exception:
         return 0.5
