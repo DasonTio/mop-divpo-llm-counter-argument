@@ -111,7 +111,12 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
     if args.dataset_dir:
         dataset_path = Path(args.dataset_dir) / f"{persona}.jsonl"
         print(f"Loading DivPO dataset from local file {dataset_path}...", flush=True)
-        ds = load_dataset("json", data_files={"train": str(dataset_path)}, split="train")
+        # Use Dataset.from_list to avoid load_dataset contacting HF Hub for the
+        # "json" builder version — that network check hangs on restricted networks.
+        import json as _json
+        from datasets import Dataset as _Dataset
+        _records = [_json.loads(l) for l in open(dataset_path, encoding="utf-8") if l.strip()]
+        ds = _Dataset.from_list(_records)
     else:
         print("Loading DivPO dataset from HF Hub...", flush=True)
         ds = load_dataset(
