@@ -111,7 +111,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--methods", nargs="+", default=list(METHODS), choices=list(METHODS))
     p.add_argument("--limit-prompts", type=int, default=None)
     p.add_argument("--judge", choices=["anthropic", "openai", "none"], default="none")
-    p.add_argument("--judge-model", default=None)
+    p.add_argument("--judge-model", default=None,
+                   help="Primary judge model. Default: gpt-4o-mini (openai) or claude-sonnet-4 (anthropic).")
+    p.add_argument("--calibration-judge", choices=["anthropic", "openai", "none"], default="none",
+                   help="Stronger judge for inter-judge agreement on a random sample. "
+                        "Use 'openai' for gpt-4o when --judge uses gpt-4o-mini.")
+    p.add_argument("--calibration-model", default=None,
+                   help="Calibration judge model. Default: gpt-4o (openai) or claude-opus (anthropic).")
+    p.add_argument("--calibration-fraction", type=float, default=0.1,
+                   help="Fraction of outputs to re-score with calibration judge (default: 0.1 = 10%%).")
     p.add_argument("--only-generate", action="store_true", help="Generate then stop.")
     p.add_argument("--skip-generation", action="store_true",
                    help="Reuse existing generations.jsonl.")
@@ -162,20 +170,43 @@ def main() -> None:
     judge_obs: dict = {}
     if args.judge != "none":
         from mop_divpo.eval.llm_judge import (
-            JudgeCache, make_anthropic_caller, make_openai_caller, score_all_outputs,
+            JudgeCache, make_anthropic_caller, make_openai_caller,
+            score_all_outputs, compute_interjudge_agreement,
         )
 
+        # Primary judge: gpt-4o-mini by default (cheap, strong vs Qwen 0.5B).
         if args.judge == "anthropic":
             call_fn = make_anthropic_caller(args.judge_model or "claude-sonnet-4-20250514")
         else:
-            call_fn = make_openai_caller(args.judge_model or "gpt-4o")
+            call_fn = make_openai_caller(args.judge_model or "gpt-4o-mini")
+
         cache = JudgeCache(outdir / "judge_cache.json")
-        print(f"Running LLM judge ({args.judge}) over {len(records)} outputs ...")
+        print(f"Running LLM judge ({args.judge} / {args.judge_model or 'gpt-4o-mini'}) "
+              f"over {len(records)} outputs ...")
         scored = score_all_outputs(
             records, call_fn=call_fn, cache=cache,
             output_path=outdir / "llm_judge_scores.jsonl",
         )
         judge_obs = per_prompt_judge_metrics(scored)
+
+        # --- 3b. Inter-judge calibration (Spearman ρ) ---
+        if args.calibration_judge != "none":
+            if args.calibration_judge == "anthropic":
+                calib_fn = make_anthropic_caller(args.calibration_model or "claude-opus-4-20250514")
+            else:
+                calib_fn = make_openai_caller(args.calibration_model or "gpt-4o")
+            calib_cache = JudgeCache(outdir / "calibration_cache.json")
+            n_sample = max(10, int(len(scored) * args.calibration_fraction))
+            print(f"\nInter-judge calibration: {args.calibration_judge} / "
+                  f"{args.calibration_model or 'gpt-4o'} on {n_sample} outputs "
+                  f"({args.calibration_fraction:.0%} sample) ...")
+            compute_interjudge_agreement(
+                scored,
+                call_fn_calibration=calib_fn,
+                fraction=args.calibration_fraction,
+                cache=calib_cache,
+                output_path=outdir / "inter_judge_agreement.json",
+            )
 
     # --- 4. Aggregate + table ---
     merged_obs: dict[str, dict[str, list[float]]] = {}

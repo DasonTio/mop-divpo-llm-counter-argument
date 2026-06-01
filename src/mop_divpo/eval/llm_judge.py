@@ -198,6 +198,93 @@ def score_all_outputs(
     return scored
 
 
+def _judge_scalar(record: dict[str, Any], rubric: str) -> float | None:
+    """Extract the composite 1-5 scalar for a rubric from a scored record."""
+    block = record.get(rubric)
+    if block is None or not isinstance(block, dict):
+        return None
+    if rubric == "quality":
+        vals = [block.get(k) for k in ("relevance", "coherence", "substance")]
+        vals = [v for v in vals if isinstance(v, (int, float))]
+        return float(sum(vals) / len(vals)) if vals else None
+    key = {"novelty": "novelty", "utility": "prewriting_utility",
+           "persona_fidelity": "persona_fidelity"}.get(rubric)
+    val = block.get(key) if key else None
+    return float(val) if isinstance(val, (int, float)) else None
+
+
+def compute_interjudge_agreement(
+    primary_scored: list[dict[str, Any]],
+    *,
+    call_fn_calibration: CallFn,
+    fraction: float = 0.1,
+    cache: JudgeCache | None = None,
+    seed: int = 42,
+    output_path: str | Path | None = None,
+) -> dict[str, Any]:
+    """Score a random fraction of outputs with a stronger calibration judge,
+    then compute Spearman ρ between primary and calibration scores per rubric.
+
+    Methodology: Spearman rank correlation is standard for ordinal 1-5 judge
+    scales (Zheng et al. 2023, "Judging LLM-as-a-Judge"; Wang et al. 2023).
+    ρ > 0.7 = acceptable agreement; report per rubric with p-value and n.
+
+    Returns a dict of {rubric: {spearman_r, p_value, n, interpretation}}.
+    """
+    import random
+    from scipy.stats import spearmanr
+
+    rng = random.Random(seed)
+    k = max(10, int(len(primary_scored) * fraction))
+    sample = rng.sample(primary_scored, k=min(k, len(primary_scored)))
+
+    # Strip scored fields — re-score with calibration judge
+    raw_sample = [
+        {f: r[f] for f in ("output_id", "method", "prompt", "persona", "output")}
+        for r in sample
+    ]
+    calib_scored = score_all_outputs(raw_sample, call_fn=call_fn_calibration, cache=cache)
+    calib_by_id = {r["output_id"]: r for r in calib_scored}
+
+    results: dict[str, Any] = {}
+    for rubric in list(RUBRICS):
+        a_vals, b_vals = [], []
+        for r in sample:
+            ps = _judge_scalar(r, rubric)
+            cs = _judge_scalar(calib_by_id.get(r["output_id"], {}), rubric)
+            if ps is not None and cs is not None:
+                a_vals.append(ps)
+                b_vals.append(cs)
+        if len(a_vals) < 3:
+            results[rubric] = {"spearman_r": None, "p_value": None, "n": len(a_vals),
+                               "interpretation": "insufficient_data"}
+            continue
+        rho, pval = spearmanr(a_vals, b_vals)
+        interpretation = (
+            "high" if rho >= 0.8 else
+            "acceptable" if rho >= 0.7 else
+            "borderline" if rho >= 0.6 else
+            "low_upgrade_judge"
+        )
+        results[rubric] = {
+            "spearman_r": round(float(rho), 4),
+            "p_value": round(float(pval), 4),
+            "n": len(a_vals),
+            "interpretation": interpretation,
+        }
+        print(f"  [{rubric}] Spearman ρ = {rho:.3f} (p={pval:.3f}, n={len(a_vals)}) → {interpretation}")
+
+    if cache is not None:
+        cache.save()
+    if output_path is not None:
+        out = Path(output_path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with out.open("w", encoding="utf-8") as f:
+            json.dump(results, f, indent=2, ensure_ascii=False)
+        print(f"  Inter-judge agreement → {out}")
+    return results
+
+
 def make_anthropic_caller(model: str = "claude-sonnet-4-20250514", max_tokens: int = 512) -> CallFn:
     """Build a temperature=0 Anthropic judge caller."""
     import anthropic
