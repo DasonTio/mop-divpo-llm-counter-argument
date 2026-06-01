@@ -379,21 +379,13 @@ def run_cross_persona(args: argparse.Namespace, token: str) -> None:
     output_dir = Path(args.output_dir)
     checks_dir = Path("outputs/data_checks")
 
-    # Build shared prompt pool: intersection of all 4 persona SFT datasets.
-    # All SFT datasets come from the same CMV corpus, so the overlap is large.
-    persona_prompt_lists: dict[str, list[str]] = {}
-    for persona in PERSONA_IDS:
-        persona_prompt_lists[persona] = _load_prompt_pool(persona, sft_dir, max_prompts=args.limit * 2)
-
-    shared_set = set(persona_prompt_lists[PERSONA_IDS[0]])
-    for persona in PERSONA_IDS[1:]:
-        shared_set &= set(persona_prompt_lists[persona])
-
-    # Preserve order from the first persona's list.
-    prompts = [p for p in persona_prompt_lists[PERSONA_IDS[0]] if p in shared_set]
-    if args.limit:
-        prompts = prompts[: args.limit]
-    print(f"  Shared prompts: {len(prompts)}")
+    # Each persona has a DIFFERENT data source (contrarian=CMV, systems_thinker=StackExchange,
+    # analogist=ArXiv, minimalist=IBM). Intersection is always empty.
+    # Use the reference persona's prompt pool for ALL personas — defaults to "contrarian"
+    # (CGA-CMV), which is the natural domain for counter-argument generation.
+    ref_persona = args.shared_prompt_persona
+    prompts = _load_prompt_pool(ref_persona, sft_dir, max_prompts=args.limit)
+    print(f"  Shared prompts from '{ref_persona}': {len(prompts)}")
 
     # ── Phase 1: Generate candidates persona by persona ──────────────────────
     all_candidates_per_persona: dict[str, list[list[str]]] = {}
@@ -495,6 +487,11 @@ def main() -> None:
     parser.add_argument("--cross-persona", action="store_true",
                         help="v2: rarity computed against all-persona candidate pool. "
                              "Recommended quality-weight=0.5 rarity-weight=0.5.")
+    parser.add_argument("--shared-prompt-persona", default="contrarian",
+                        choices=PERSONA_IDS,
+                        help="(--cross-persona only) Which persona's SFT prompt pool "
+                             "to use as the shared source for all 4 personas. "
+                             "Default: contrarian (CGA-CMV counter-argument data).")
     parser.add_argument("--candidate-count", type=int, default=4)
     parser.add_argument("--adapter-dir", default="outputs/adapters/sft")
     parser.add_argument("--prompt-pool", default="data/processed/sft")
