@@ -404,6 +404,7 @@ def run_cross_persona(args: argparse.Namespace, token: str) -> None:
         batch_size = args.gen_batch_size
         for batch_start in range(0, len(prompts), batch_size):
             batch = prompts[batch_start: batch_start + batch_size]
+            print(f"  [{persona}] [{batch_start}/{len(prompts)}] batch {len(batch)} prompts × {args.candidate_count} candidates...", flush=True)
             try:
                 batch_out = _generate_candidates_batch(
                     batch, system_prompt, model, tokenizer,
