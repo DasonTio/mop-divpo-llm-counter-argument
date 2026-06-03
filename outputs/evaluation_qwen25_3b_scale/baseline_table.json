@@ -1,0 +1,69 @@
+{
+  "summary": {
+    "base": {
+      "self_bleu": {
+        "mean": 0.16731189053005469,
+        "std": 0.036466627927806534,
+        "n": 30
+      },
+      "distinct_1": {
+        "mean": 0.4197488143110288,
+        "std": 0.02559271392326221,
+        "n": 30
+      },
+      "distinct_2": {
+        "mean": 0.8306682690405445,
+        "std": 0.028256703897421784,
+        "n": 30
+      },
+      "sbert_cosine": {
+        "mean": 0.8297206203142802,
+        "std": 0.04471753806027919,
+        "n": 30
+      }
+    },
+    "prompt_only": {
+      "self_bleu": {
+        "mean": 0.07590541364165032,
+        "std": 0.023066559863847997,
+        "n": 30
+      },
+      "distinct_1": {
+        "mean": 0.48663060185787543,
+        "std": 0.022362739673412846,
+        "n": 30
+      },
+      "distinct_2": {
+        "mean": 0.8737101565725652,
+        "std": 0.021780778148190284,
+        "n": 30
+      },
+      "sbert_cosine": {
+        "mean": 0.6902952492237091,
+        "std": 0.06798128541654208,
+        "n": 30
+      }
+    }
+  },
+  "significance": {},
+  "n_prompts": 30,
+  "methods": [
+    "base",
+    "prompt_only"
+  ],
+  "base_model": "Qwen/Qwen2.5-3B-Instruct",
+  "adapter_prefix": "DasonTio/mop-divpo-coauthor",
+  "method_configs": {
+    "base": {
+      "stage": "base",
+      "use_persona_prompt": false,
+      "per_persona": false
+    },
+    "prompt_only": {
+      "stage": "base",
+      "use_persona_prompt": true,
+      "per_persona": true
+    }
+  },
+  "headline": "mop_divpo"
+}

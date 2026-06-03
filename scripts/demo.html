@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MoP + DivPO — Counter-Argument Demo</title>
+<style>
+:root {
+  --bg: #0d0f14;
+  --surface: #161920;
+  --surface2: #1e2230;
+  --border: #282d3e;
+  --border2: #323849;
+  --accent: #5b7ec9;
+  --accent-hover: #4a6db8;
+  --text: #dde3ef;
+  --muted: #7a8499;
+  --muted2: #545d72;
+  --best: #4caf78;
+  --warn: #f0b429;
+  --err: #e85d75;
+  --r: 10px;
+  --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", "Fira Code", "Menlo", monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+/* ── header ───────────────────────────────────────────────── */
+header {
+  height: 54px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo-icon {
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, #5b7ec9 0%, #8b5cf6 100%);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.logo h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+.logo .sub { font-size: 12px; color: var(--muted); margin-left: 2px; }
+.tag {
+  background: #1e2a4a;
+  border: 1px solid #2d3f6e;
+  color: var(--accent);
+  border-radius: 5px;
+  padding: 2px 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.header-right {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted2);
+}
+
+/* ── layout ───────────────────────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  height: calc(100vh - 54px);
+  overflow: hidden;
+}
+.sidebar {
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.main {
+  overflow-y: auto;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── sidebar sections ─────────────────────────────────────── */
+.section-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--muted2);
+  margin-bottom: 8px;
+  padding-left: 2px;
+}
+
+/* ── method cards ─────────────────────────────────────────── */
+.method-list { display: flex; flex-direction: column; gap: 6px; }
+.method-card {
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  background: var(--surface);
+}
+.method-card:hover { border-color: var(--border2); background: var(--surface2); }
+.method-card.active {
+  border-color: var(--accent);
+  background: #151e36;
+}
+.mc-name {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mc-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--muted2);
+  flex-shrink: 0;
+}
+.method-card.active .mc-dot { background: var(--accent); }
+.mc-desc { font-size: 11px; color: var(--muted); line-height: 1.4; margin-bottom: 8px; }
+.mc-metrics { display: flex; flex-wrap: wrap; gap: 4px; }
+.mc-metric {
+  font-size: 10.5px;
+  border-radius: 4px;
+  padding: 1px 6px;
+  background: var(--surface2);
+  color: var(--muted);
+  border: 1px solid transparent;
+}
+.mc-metric.best {
+  color: var(--best);
+  border-color: #1e4530;
+  background: #0f2a1c;
+}
+
+/* ── example chips ────────────────────────────────────────── */
+.example-list { display: flex; flex-direction: column; gap: 5px; }
+.example-chip {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 7px 10px;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font);
+}
+.example-chip:hover {
+  border-color: var(--border2);
+  color: var(--text);
+  background: var(--surface2);
+}
+
+/* ── input area ───────────────────────────────────────────── */
+.input-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px 16px;
+}
+.input-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted2);
+  margin-bottom: 8px;
+}
+textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.65;
+  padding: 10px 12px;
+  resize: vertical;
+  min-height: 72px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+textarea:focus { border-color: var(--accent); }
+textarea::placeholder { color: var(--muted2); }
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.btn-gen {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: 8px 20px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background 0.15s, opacity 0.15s;
+  letter-spacing: -0.1px;
+}
+.btn-gen:hover { background: var(--accent-hover); }
+.btn-gen:disabled { opacity: 0.45; cursor: not-allowed; }
+.param {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.param label { white-space: nowrap; }
+.param input[type=number] {
+  width: 52px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 3px 7px;
+  outline: none;
+  font-family: var(--font);
+}
+.param input[type=range] {
+  width: 80px;
+  accent-color: var(--accent);
+}
+#status {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-left: auto;
+}
+#status.error { color: var(--err); }
+
+/* ── results ──────────────────────────────────────────────── */
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--muted2);
+  padding: 60px 20px;
+  text-align: center;
+}
+.empty-icon { font-size: 36px; opacity: 0.4; }
+.empty-text { font-size: 13px; max-width: 280px; line-height: 1.5; }
+
+.results-grid {
+  display: grid;
+  gap: 14px;
+}
+.results-grid.quad { grid-template-columns: repeat(2, 1fr); }
+.results-grid.single { grid-template-columns: 1fr; max-width: 680px; }
+
+.persona-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.pc-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.pc-stripe {
+  width: 3px;
+  height: 28px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.pc-title { flex: 1; }
+.pc-name { font-size: 12.5px; font-weight: 700; }
+.pc-tagline { font-size: 10.5px; color: var(--muted); }
+.pc-body { padding: 14px; flex: 1; }
+.output-text {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.multi-output { display: flex; flex-direction: column; gap: 12px; }
+.output-item {
+  border-left: 2px solid var(--border2);
+  padding-left: 10px;
+}
+.output-num {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--muted2);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+/* ── skeleton loading ─────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface2) 25%,
+    var(--border2) 50%,
+    var(--surface2) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 4px;
+  height: 13px;
+  margin-bottom: 9px;
+}
+.skeleton:last-child { margin-bottom: 0; }
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── method badge in header ───────────────────────────────── */
+.active-method-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+/* ── responsive ───────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .results-grid.quad { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🧠</div>
+    <h1>MoP + DivPO</h1>
+    <span class="sub">Counter-Argument Generation</span>
+  </div>
+  <span class="tag">Research Demo</span>
+  <span class="header-right" id="header-model">Qwen2.5-0.5B-Instruct</span>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div>
+      <div class="section-label">Method</div>
+      <div class="method-list" id="method-list"></div>
+    </div>
+    <div>
+      <div class="section-label">Example Prompts</div>
+      <div class="example-list" id="example-list"></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="input-box">
+      <div class="input-label">Claim or Topic</div>
+      <textarea
+        id="prompt-input"
+        placeholder="Enter a claim, topic, or CMV statement…"
+        rows="3"
+      ></textarea>
+      <div class="controls">
+        <button class="btn-gen" id="gen-btn">Generate</button>
+        <div class="param">
+          <label for="n-val">Outputs per persona</label>
+          <input type="number" id="n-val" value="1" min="1" max="5" />
+        </div>
+        <span id="status"></span>
+      </div>
+    </div>
+
+    <div id="results-area">
+      <div class="empty-state">
+        <div class="empty-icon">💬</div>
+        <p class="empty-text">
+          Select a method on the left, enter a claim, then click <strong>Generate</strong>
+          to see diverse counter-arguments per persona.
+        </p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+"use strict";
+
+// ── state ──────────────────────────────────────────────────────────────────
+let CONFIG = null;
+let activeMethod = "mop_divpo_v2";
+
+// ── boot ───────────────────────────────────────────────────────────────────
+async function boot() {
+  const resp = await fetch("/api/config");
+  CONFIG = await resp.json();
+  renderMethods();
+  renderExamples();
+  document.getElementById("gen-btn").addEventListener("click", runGenerate);
+  document.getElementById("prompt-input").addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); runGenerate(); }
+  });
+}
+
+// ── sidebar: methods ───────────────────────────────────────────────────────
+function renderMethods() {
+  const container = document.getElementById("method-list");
+  container.innerHTML = "";
+  for (const [id, m] of Object.entries(CONFIG.methods)) {
+    const card = document.createElement("div");
+    card.className = "method-card" + (id === activeMethod ? " active" : "");
+    card.dataset.id = id;
+
+    const metricsHtml = Object.entries(m.metrics || {}).map(([k, v]) => {
+      const best = CONFIG.best_metrics[k];
+      const isBest = best !== undefined && (
+        k.endsWith("↓") ? v <= best : v >= best
+      );
+      return `<span class="mc-metric${isBest ? " best" : ""}">${k} ${v}</span>`;
+    }).join("");
+
+    card.innerHTML = `
+      <div class="mc-name">
+        <span class="mc-dot"></span>
+        ${esc(m.label)}
+      </div>
+      <div class="mc-desc">${esc(m.description)}</div>
+      <div class="mc-metrics">${metricsHtml}</div>
+    `;
+    card.addEventListener("click", () => selectMethod(id));
+    container.appendChild(card);
+  }
+}
+
+function selectMethod(id) {
+  activeMethod = id;
+  document.querySelectorAll(".method-card").forEach(c => {
+    c.classList.toggle("active", c.dataset.id === id);
+  });
+}
+
+// ── sidebar: examples ──────────────────────────────────────────────────────
+function renderExamples() {
+  const container = document.getElementById("example-list");
+  container.innerHTML = "";
+  for (const ex of CONFIG.examples) {
+    const btn = document.createElement("button");
+    btn.className = "example-chip";
+    btn.textContent = ex;
+    btn.addEventListener("click", () => {
+      document.getElementById("prompt-input").value = ex;
+      runGenerate();
+    });
+    container.appendChild(btn);
+  }
+}
+
+// ── generate ───────────────────────────────────────────────────────────────
+async function runGenerate() {
+  if (!CONFIG) return;
+  const prompt = document.getElementById("prompt-input").value.trim();
+  if (!prompt) return;
+
+  const n = Math.max(1, Math.min(5, parseInt(document.getElementById("n-val").value) || 1));
+  const method = CONFIG.methods[activeMethod];
+  const btn = document.getElementById("gen-btn");
+  const status = document.getElementById("status");
+
+  const personas = method.multi_persona ? CONFIG.persona_order : [null];
+
+  showSkeletons(personas, n);
+  btn.disabled = true;
+  status.textContent = "Loading model… (first call may take ~30 s)";
+  status.className = "";
+
+  const t0 = Date.now();
+  try {
+    const resp = await fetch("/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ method: activeMethod, prompt, n }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || resp.statusText);
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+    fillResults(personas, data.outputs, n);
+    status.textContent = `Done in ${elapsed}s`;
+  } catch (err) {
+    status.textContent = "Error: " + err.message;
+    status.className = "error";
+    document.getElementById("results-area").innerHTML =
+      `<div class="empty-state"><div class="empty-icon">⚠️</div>
+       <p class="empty-text">${esc(err.message)}</p></div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── results rendering ──────────────────────────────────────────────────────
+function showSkeletons(personas, n) {
+  const area = document.getElementById("results-area");
+  const multi = personas.length > 1;
+  area.innerHTML = `<div class="results-grid ${multi ? "quad" : "single"}" id="results-grid"></div>`;
+  const grid = document.getElementById("results-grid");
+  for (const p of personas) {
+    grid.appendChild(buildCard(p, null, n));
+  }
+}
+
+function fillResults(personas, outputs, n) {
+  const area = document.getElementById("results-area");
+  const multi = personas.length > 1;
+  area.innerHTML = `<div class="results-grid ${multi ? "quad" : "single"}" id="results-grid"></div>`;
+  const grid = document.getElementById("results-grid");
+  for (const p of personas) {
+    const key = String(p);
+    const texts = outputs[key] || [];
+    grid.appendChild(buildCard(p, texts, n));
+  }
+}
+
+function buildCard(persona, texts, n) {
+  const info = persona ? CONFIG.persona_info[persona] : { label: "Base Output", tagline: "No persona", color: "#7a8499" };
+  const color = info ? info.color : "#7a8499";
+  const label = info ? info.label : "Output";
+  const tagline = info ? info.tagline : "";
+
+  const card = document.createElement("div");
+  card.className = "persona-card";
+
+  let bodyHtml;
+  if (texts === null) {
+    // skeleton state
+    bodyHtml = [90, 100, 75, 85, 60, 95, 70].map(w =>
+      `<div class="skeleton" style="width:${w}%"></div>`
+    ).join("");
+  } else if (texts.length === 0) {
+    bodyHtml = `<div class="output-text" style="color:var(--muted)">No output.</div>`;
+  } else if (texts.length === 1 || n === 1) {
+    bodyHtml = `<div class="output-text">${esc(texts[0] || "")}</div>`;
+  } else {
+    bodyHtml = `<div class="multi-output">${
+      texts.map((t, i) =>
+        `<div class="output-item">
+           <div class="output-num">Output ${i + 1}</div>
+           <div class="output-text">${esc(t)}</div>
+         </div>`
+      ).join("")
+    }</div>`;
+  }
+
+  card.innerHTML = `
+    <div class="pc-header">
+      <div class="pc-stripe" style="background:${color}"></div>
+      <div class="pc-title">
+        <div class="pc-name">${esc(label)}</div>
+        <div class="pc-tagline">${esc(tagline)}</div>
+      </div>
+    </div>
+    <div class="pc-body">${bodyHtml}</div>
+  `;
+  return card;
+}
+
+// ── util ───────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// ── init ───────────────────────────────────────────────────────────────────
+boot();
+</script>
+</body>
+</html>

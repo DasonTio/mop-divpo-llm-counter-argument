@@ -57,19 +57,28 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
     print(f"{'='*60}\n")
 
     # --- Data ---
-    print("Loading dataset from HF Hub...", flush=True)
-    ds = load_sft_dataset(persona, token=token)
+    if args.dataset_dir:
+        import json as _json
+        from datasets import Dataset as _Dataset
+
+        dataset_path = Path(args.dataset_dir) / f"{persona}.jsonl"
+        print(f"Loading dataset from local file {dataset_path}...", flush=True)
+        _records = [_json.loads(l) for l in open(dataset_path, encoding="utf-8") if l.strip()]
+        ds = _Dataset.from_list(_records)
+    else:
+        print("Loading dataset from HF Hub...", flush=True)
+        ds = load_sft_dataset(persona, token=token)
     print(f"  {len(ds)} training examples")
 
     # --- Tokenizer ---
-    tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, token=token)
+    tokenizer = AutoTokenizer.from_pretrained(args.base_model, token=token)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
     # --- Model ---
     print("Loading base model...", flush=True)
     model = AutoModelForCausalLM.from_pretrained(
-        BASE_MODEL,
+        args.base_model,
         torch_dtype=torch.float16,
         device_map="auto",
         token=token,
@@ -103,7 +112,7 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
     ds = ds.map(format_messages, remove_columns=ds.column_names)
 
     # --- Training ---
-    output_dir = f"outputs/adapters/sft/{persona}"
+    output_dir = f"outputs/adapters/{args.output_stage}/{persona}"
     sft_kwargs = {
         "output_dir": output_dir,
         "num_train_epochs": args.epochs,
@@ -121,6 +130,9 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
         "max_seq_length": args.max_seq_len,
         "dataset_text_field": "text",
         "packing": False,
+        "optim": "adamw_torch_fused",
+        "gradient_checkpointing": True,
+        "dataloader_num_workers": 0,
     }
     sft_params = inspect.signature(SFTConfig).parameters
     if "max_seq_length" not in sft_params and "max_length" in sft_params:
@@ -149,8 +161,8 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
 
     # Push to HF Hub
     if not args.no_push:
-        print(f"Pushing to {MODEL_REPO}/sft/{persona} ...", flush=True)
-        url = push_adapter(output_dir, "sft", persona, token)
+        print(f"Pushing to {MODEL_REPO}/{args.output_stage}/{persona} ...", flush=True)
+        url = push_adapter(output_dir, args.output_stage, persona, token)
         print(f"  Pushed → {url}")
 
 
@@ -163,6 +175,11 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--grad-accum", type=int, default=4)
     parser.add_argument("--max-seq-len", type=int, default=512)
+    parser.add_argument("--dataset-dir", default=None,
+                        help="Optional local directory containing {persona}.jsonl SFT files.")
+    parser.add_argument("--base-model", default=BASE_MODEL)
+    parser.add_argument("--output-stage", default="sft",
+                        help="Hub/output stage name, e.g. sft or sft_1p5b.")
     parser.add_argument("--token", default=None, help="HF token (or set HF_TOKEN env var).")
     parser.add_argument("--no-push", action="store_true", help="Skip HF Hub push.")
     args = parser.parse_args()

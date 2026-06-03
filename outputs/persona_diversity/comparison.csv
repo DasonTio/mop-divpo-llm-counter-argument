@@ -1,0 +1,11 @@
+run,method,inter_mean,base_ratio_mean,same_prompt_intra_mean,cross_prompt_dispersion_mean,silhouette_mean
+qwen25_0p5b,base,,,0.324943,,
+qwen25_0p5b,prompt_only,0.291974,0.898540,,0.838396,-0.030019
+qwen25_0p5b,single_lora,0.518957,1.597071,,0.870858,-0.022942
+qwen25_0p5b,mop_sft,0.512072,1.575883,,0.872016,-0.011420
+qwen25_0p5b,mop_divpo,0.295361,0.908964,,0.830845,-0.024836
+qwen25_0p5b,mop_divpo_v2,0.309838,0.953517,,0.832369,-0.024975
+qwen25_1p5b,base,,,0.227890,,
+qwen25_1p5b,prompt_only,0.289619,1.270874,,0.820350,-0.029852
+qwen25_1p5b,mop_sft,0.488848,2.145110,,0.874616,-0.008410
+qwen25_1p5b,mop_divpo_v2,0.293468,1.287765,,0.818446,-0.029671

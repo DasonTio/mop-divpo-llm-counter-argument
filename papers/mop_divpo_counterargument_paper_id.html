@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>mop_divpo_counterargument_paper_id</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="paper.css" />
+</head>
+<body>
+<section
+id="mixture-of-persona-dan-diverse-preference-optimization-untuk-generasi-counter-argument-yang-beragam"
+class="titlepage">
+<h1>Mixture of Persona dan Diverse Preference Optimization untuk
+Generasi Counter-Argument yang Beragam</h1>
+<p><strong>Makalah Utama Penelitian LLM</strong></p>
+<p><strong>Dason Tiovino</strong><br />
+NIM: 2310101002</p>
+<p>Program Studi Informatika<br />
+Universitas Pradita<br />
+Tangerang<br />
+2026</p>
+</section>
+<h2 id="abstrak">Abstrak</h2>
+<p>Large Language Models (LLMs) semakin sering digunakan sebagai asisten
+pada tahap pre-writing. Namun, kemudahan ini membawa risiko penting:
+model dapat menghasilkan ide yang tampak fasih, tetapi secara konseptual
+saling mirip. Fenomena ini berhubungan dengan generative monoculture,
+yaitu kecenderungan model terarah untuk menghasilkan distribusi output
+yang sempit. Penelitian ini memfokuskan masalah tersebut ke domain yang
+lebih konkret, yaitu generasi counter-argument. Sistem yang dikembangkan
+mengombinasikan base model Qwen2.5-0.5B-Instruct dengan empat adapter
+LoRA berbasis persona kognitif: contrarian, systems thinker,
+cross-domain analogist, dan minimalist. Setiap persona dilatih melalui
+supervised fine-tuning, lalu dioptimalkan menggunakan Diverse Preference
+Optimization (DivPO). Evaluasi akhir membandingkan enam metode: base
+model, prompt-only, single LoRA, MoP-SFT, MoP+DivPO, dan MoP+DivPO v2.
+Hasil menunjukkan bahwa klaim penelitian harus dibuat secara hati-hati.
+Keempat persona terbukti sangat berbeda secara distribusional, dengan
+seluruh skor cosine SBERT antar persona sekitar 0.19-0.20. Namun, metode
+adapter SFT yang paling beragam justru menurunkan kualitas dan kegunaan
+output. DivPO v2 menjadi varian paling seimbang karena mempertahankan
+kualitas dan utility mendekati prompt-only, sambil memberi peningkatan
+kecil pada novelty dan lexical diversity. Dengan demikian, kontribusi
+utama penelitian ini bukan klaim bahwa DivPO menang di semua metrik,
+melainkan analisis empiris terhadap trade-off antara diversity dan
+quality dalam generasi counter-argument oleh LLM kecil.</p>
+<h2 id="bab-1.-pendahuluan">BAB 1. Pendahuluan</h2>
+<h3 id="latar-belakang">1.1 Latar belakang</h3>
+<p>LLM seperti GPT, Claude, Gemini, dan model terbuka lain telah
+mengubah cara manusia menulis, mencari ide, dan menyusun argumentasi.
+Pada tahap pre-writing, LLM sering digunakan untuk menghasilkan sudut
+pandang awal, counter-argument, outline, atau kemungkinan arah tulisan.
+Tahap ini penting karena ide awal sangat memengaruhi kualitas tulisan
+akhir. Jika ide awal generik, proses drafting dan editing berikutnya
+hanya akan memoles gagasan yang sejak awal sudah sempit.</p>
+<p>Masalah utama yang diteliti di sini bukan kelancaran bahasa. Model
+modern sudah mampu menghasilkan teks yang fasih. Masalah yang lebih
+mendasar adalah keseragaman ide. Beberapa penelitian menunjukkan bahwa
+bantuan generative AI dapat meningkatkan kualitas atau kreativitas
+individu, tetapi pada saat yang sama menurunkan diversity kolektif dari
+konten yang dihasilkan [1, 2]. Dengan kata lain, banyak pengguna dapat
+berakhir pada ide yang mirip karena menerima saran dari model yang
+sama.</p>
+<p>Wu et al. menyebut fenomena ini sebagai generative monoculture [3].
+Model yang telah melalui alignment cenderung mengerucut ke respons yang
+aman, umum, dan disukai. Untuk tugas seperti menjawab pertanyaan
+faktual, konvergensi ini dapat berguna. Namun untuk pre-writing,
+konvergensi terlalu awal justru berbahaya karena penulis membutuhkan
+eksplorasi.</p>
+<p>Proposal awal penelitian ini menggunakan framing “pre-writing
+ideation system” yang mengombinasikan Mixture of Persona (MoP) dan
+Diverse Preference Optimization (DivPO). Setelah eksperimen selesai,
+framing tersebut perlu diperjelas. Penelitian ini tidak mengevaluasi
+dampak langsung terhadap tulisan akhir manusia. Domain evaluasi yang
+benar adalah generasi counter-argument berbasis prompt CGA-CMV dan
+prompt sejenis. Counter-argument dipilih karena lebih mudah dinilai:
+sebuah output dapat diperiksa dari sisi relevansi, koherensi, substansi,
+novelty, utility, dan kesesuaian persona.</p>
+<h3 id="rumusan-masalah">1.2 Rumusan masalah</h3>
+<p>Rumusan masalah penelitian ini adalah:</p>
+<ol type="1">
+<li>Apakah empat adapter persona kognitif menghasilkan distribusi output
+yang benar-benar berbeda, atau hanya variasi permukaan dari model yang
+sama?</li>
+<li>Apakah DivPO dapat meningkatkan keseimbangan antara keberagaman dan
+kualitas dibandingkan base model, prompt-only, single LoRA, dan
+MoP-SFT?</li>
+<li>Bagaimana hasil penelitian harus ditulis secara jujur ketika metrik
+diversity dan metrik quality tidak selalu bergerak ke arah yang
+sama?</li>
+</ol>
+<h3 id="tujuan-penelitian">1.3 Tujuan penelitian</h3>
+<p>Tujuan penelitian ini adalah:</p>
+<ol type="1">
+<li>Mengembangkan arsitektur MoP berbasis beberapa adapter LoRA untuk
+generasi counter-argument.</li>
+<li>Menguji apakah persona yang dilatih memiliki output yang terpisah
+secara semantik.</li>
+<li>Mengevaluasi pengaruh DivPO dan DivPO v2 terhadap diversity,
+quality, utility, novelty, dan persona fidelity.</li>
+<li>Menyusun klaim penelitian yang koheren dengan hasil aktual, bukan
+hanya dengan proposal awal.</li>
+</ol>
+<h3 id="posisi-akhir-penelitian">1.4 Posisi akhir penelitian</h3>
+<p>Posisi akhir penelitian ini bersifat lebih kuat karena lebih
+hati-hati. Hasil menunjukkan bahwa MoP berhasil pada aspek persona
+distinctness. Namun, hasil baseline tidak menunjukkan bahwa MoP+DivPO
+menang mutlak pada semua metrik. Metode SFT menghasilkan diversity
+paling tinggi, tetapi mengorbankan quality dan utility. Prompt-only
+tetap menjadi baseline yang kuat. MoP+DivPO v2 adalah varian paling
+seimbang karena menjaga kualitas dan kegunaan sambil mempertahankan
+sinyal diversity yang lebih baik daripada base model.</p>
+<h2 id="bab-2.-tinjauan-pustaka">BAB 2. Tinjauan Pustaka</h2>
+<h3 id="llm-dan-masalah-diversity-dalam-writing-assistance">2.1 LLM dan
+masalah diversity dalam writing assistance</h3>
+<p>LLM dilatih untuk memprediksi token berikutnya berdasarkan distribusi
+data yang sangat besar. Setelah pre-training, model biasanya melalui
+tahap alignment agar responsnya lebih aman, membantu, dan sesuai
+preferensi manusia. Alignment ini meningkatkan usability, tetapi dapat
+mengurangi variasi output. Untuk banyak tugas, hal ini tidak menjadi
+masalah. Untuk ideation dan writing assistance, hal ini menjadi
+krusial.</p>
+<p>Doshi dan Hauser menunjukkan bahwa generative AI dapat meningkatkan
+kreativitas individu, tetapi menurunkan diversity kolektif dari konten
+yang dihasilkan [1]. Padmakumar dan He juga menunjukkan bahwa penggunaan
+language model dalam proses menulis dapat mengurangi content diversity
+[2]. Kedua hasil ini memperkuat alasan mengapa evaluasi sistem writing
+assistance tidak cukup hanya menggunakan kualitas teks.</p>
+<p>Wu et al. memperkenalkan konsep generative monoculture [3]. Dalam
+konteks penelitian ini, generative monoculture berarti model cenderung
+memberi counter-argument yang aman dan umum, bukan counter-argument yang
+benar-benar membuka ruang berpikir baru bagi penulis.</p>
+<h3 id="preference-optimization-dan-divpo">2.2 Preference optimization
+dan DivPO</h3>
+<p>Metode preference optimization seperti RLHF dan DPO mengoptimalkan
+model agar lebih sering menghasilkan respons yang disukai. Namun, proses
+ini dapat mempertajam distribusi model. Jika respons yang paling disukai
+juga merupakan respons yang paling umum, maka model akan semakin
+terdorong ke output yang homogen.</p>
+<p>DivPO mengubah cara pasangan preference dibentuk [5]. Alih-alih
+memilih respons paling berkualitas sebagai chosen response, DivPO
+memilih respons yang rare tetapi masih melewati ambang kualitas. Ide
+dasarnya sederhana: novelty tidak berguna jika responsnya buruk, tetapi
+quality saja tidak cukup jika semua respons mengulang framing yang
+sama.</p>
+<p>Dalam penelitian ini, DivPO digunakan untuk memperluas distribusi
+output setiap persona. Varian DivPO v2 kemudian dikembangkan agar sinyal
+training lebih sesuai dengan evaluasi akhir. Jika evaluasi mengukur
+diversity antar persona, maka rarity dalam training juga harus dihitung
+terhadap kandidat lintas persona, bukan hanya kandidat dari persona yang
+sama.</p>
+<h3 id="lora-qlora-dan-mixture-style-adaptation">2.3 LoRA, QLoRA, dan
+mixture-style adaptation</h3>
+<p>LoRA memungkinkan fine-tuning yang efisien dengan membekukan base
+model dan menambahkan matriks low-rank yang dapat dilatih [6]. QLoRA
+melanjutkan prinsip ini dengan quantization agar fine-tuning model besar
+dapat dilakukan dengan kebutuhan memori lebih kecil [7]. Teknik ini
+relevan karena penelitian ini menggunakan beberapa adapter kecil
+daripada melatih ulang seluruh model.</p>
+<p>Pendekatan mixture-style seperti MixLoRA menggunakan beberapa expert
+berbasis LoRA dan mekanisme routing [8]. Penelitian ini mengambil
+prinsip tersebut, tetapi expert yang digunakan bukan expert domain
+tugas, melainkan persona kognitif. Tujuannya bukan hanya efisiensi
+komputasi, tetapi pemisahan gaya berpikir.</p>
+<h3 id="mixture-of-persona">2.4 Mixture of Persona</h3>
+<p>Mixture of Persona dalam penelitian ini berarti model memiliki
+beberapa adapter yang masing-masing merepresentasikan cara berpikir
+berbeda. Empat persona yang digunakan adalah:</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Persona</th>
+<th>Fungsi kognitif</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Contrarian</td>
+<td>Menantang asumsi tersembunyi dan posisi mayoritas</td>
+</tr>
+<tr>
+<td>Systems thinker</td>
+<td>Melihat sebab-akibat, constraint, feedback loop, dan efek tingkat
+dua</td>
+</tr>
+<tr>
+<td>Cross-domain analogist</td>
+<td>Meminjam mekanisme dari domain lain untuk membentuk analogi</td>
+</tr>
+<tr>
+<td>Minimalist</td>
+<td>Menghapus asumsi sekunder dan menyorot inti perbedaan pendapat</td>
+</tr>
+</tbody>
+</table>
+<p>Persona ini tidak dipilih hanya sebagai gaya bahasa. Masing-masing
+merepresentasikan operasi berpikir yang berguna dalam pre-writing.
+Contrarian membantu penulis melihat asumsi yang tidak dipertanyakan.
+Systems thinker membantu melihat struktur masalah. Cross-domain
+analogist membantu transfer ide lintas bidang. Minimalist membantu
+menemukan inti konflik tanpa distraksi.</p>
+<h2 id="bab-3.-metodologi">BAB 3. Metodologi</h2>
+<h3 id="arsitektur-sistem">3.1 Arsitektur sistem</h3>
+<p>Base model yang digunakan adalah
+<code>Qwen/Qwen2.5-0.5B-Instruct</code>. Model dasar dibekukan, lalu
+empat adapter LoRA dilatih di atasnya. Setiap adapter memiliki system
+prompt dan dataset yang disesuaikan dengan persona.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Persona</th>
+<th>Sumber data utama</th>
+<th>Alasan pemilihan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Contrarian</td>
+<td>Conversations Gone Awry - ChangeMyView</td>
+<td>Mengandung pola debat dan bantahan terhadap klaim</td>
+</tr>
+<tr>
+<td>Systems thinker</td>
+<td>StackExchange question-answering</td>
+<td>Banyak jawaban menjelaskan constraint, sebab, dan solusi
+struktural</td>
+</tr>
+<tr>
+<td>Cross-domain analogist</td>
+<td>arXiv abstracts</td>
+<td>Mengandung mekanisme abstrak yang dapat dipindahkan lintas
+domain</td>
+</tr>
+<tr>
+<td>Minimalist</td>
+<td>IBM argument quality ranking</td>
+<td>Mengandung argumen singkat yang dapat dipakai untuk kritik
+ringkas</td>
+</tr>
+</tbody>
+</table>
+<p>Prinsip yang digunakan adalah cognitive fingerprint: data fine-tuning
+harus mencerminkan operasi berpikir yang ingin dipelajari model. Jika
+dataset tidak membawa pola kognitif yang tepat, adapter hanya akan
+mempelajari gaya permukaan.</p>
+<h3 id="tahap-training">3.2 Tahap training</h3>
+<p>Training dilakukan dalam dua tahap. Tahap pertama adalah supervised
+fine-tuning untuk setiap persona. Tahap kedua adalah DivPO. Pada DivPO
+awal, rarity dihitung terhadap kandidat dalam persona yang sama. Pada
+DivPO v2, rarity dihitung terhadap seluruh kandidat lintas persona pada
+prompt yang sama.</p>
+<p>Perubahan penting pada DivPO v2 adalah penghapusan prompt-response
+cosine sebagai komponen quality proxy. Untuk counter-argument, respons
+yang baik tidak selalu dekat secara semantik dengan prompt. Respons yang
+baik dapat menolak, membalik, atau mereframing klaim. Karena itu, DivPO
+v2 menggunakan quality floor berbasis koherensi dan panjang, lalu
+memilih kandidat yang rare di antara kandidat lintas persona.</p>
+<h3 id="metode-pembanding">3.3 Metode pembanding</h3>
+<p>Evaluasi akhir menggunakan enam metode:</p>
+<table>
+<thead>
+<tr>
+<th>Metode</th>
+<th>Deskripsi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Base</td>
+<td>Qwen2.5-0.5B-Instruct tanpa adapter dan tanpa persona prompt</td>
+</tr>
+<tr>
+<td>Prompt-only</td>
+<td>Base model dengan instruksi persona di system prompt</td>
+</tr>
+<tr>
+<td>Single LoRA</td>
+<td>Satu adapter dilatih pada gabungan semua data persona</td>
+</tr>
+<tr>
+<td>MoP-SFT</td>
+<td>Empat adapter persona setelah supervised fine-tuning</td>
+</tr>
+<tr>
+<td>MoP+DivPO</td>
+<td>Empat adapter persona setelah DivPO awal</td>
+</tr>
+<tr>
+<td>MoP+DivPO v2</td>
+<td>Empat adapter persona setelah DivPO lintas persona</td>
+</tr>
+</tbody>
+</table>
+<p>Untuk metode berbasis persona, setiap prompt menghasilkan empat
+output, masing-masing dari satu persona. Untuk base model, setiap prompt
+menghasilkan empat output stokastik tanpa persona.</p>
+<h3 id="evaluasi">3.4 Evaluasi</h3>
+<p>Evaluasi dibagi menjadi dua tahap besar.</p>
+<p>Pertama, persona distinctness validation. Tahap ini menggunakan 20
+prompt netral. Untuk setiap prompt dan setiap persona, model
+menghasilkan lima output. Total output adalah 400. Semua output di-embed
+menggunakan <code>all-MiniLM-L6-v2</code>, lalu dihitung cosine
+similarity antar persona.</p>
+<p>Kedua, baseline evaluation. Tahap ini menggunakan 30 prompt dan enam
+metode. Setiap metode menghasilkan 120 output, sehingga totalnya 720
+output. Metrik otomatis yang digunakan adalah Self-BLEU, Distinct-1,
+Distinct-2, dan SBERT cosine. Selain itu, digunakan LLM-as-judge untuk
+quality, novelty, pre-writing utility, dan persona fidelity.</p>
+<h2 id="bab-4.-hasil-dan-pembahasan">BAB 4. Hasil dan Pembahasan</h2>
+<h3 id="hasil-persona-distinctness">4.1 Hasil persona distinctness</h3>
+<p>Hasil persona distinctness adalah sebagai berikut:</p>
+<table>
+<thead>
+<tr>
+<th>Pasangan persona</th>
+<th style="text-align: right;">SBERT cosine</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Contrarian - Systems thinker</td>
+<td style="text-align: right;">0.2046</td>
+</tr>
+<tr>
+<td>Contrarian - Cross-domain analogist</td>
+<td style="text-align: right;">0.2030</td>
+</tr>
+<tr>
+<td>Systems thinker - Cross-domain analogist</td>
+<td style="text-align: right;">0.1973</td>
+</tr>
+<tr>
+<td>Contrarian - Minimalist</td>
+<td style="text-align: right;">0.1922</td>
+</tr>
+<tr>
+<td>Systems thinker - Minimalist</td>
+<td style="text-align: right;">0.1906</td>
+</tr>
+<tr>
+<td>Cross-domain analogist - Minimalist</td>
+<td style="text-align: right;">0.1904</td>
+</tr>
+</tbody>
+</table>
+<p>Seluruh pasangan berada jauh di bawah threshold 0.5. Tidak ada
+pasangan yang mendekati threshold collapse 0.7. Ini adalah bukti paling
+kuat untuk klaim arsitektur MoP. Keempat persona tidak collapse menjadi
+satu distribusi yang sama.</p>
+<h3 id="hasil-baseline-evaluation">4.2 Hasil baseline evaluation</h3>
+<table>
+<colgroup>
+<col style="width: 8%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+</colgroup>
+<thead>
+<tr>
+<th>Method</th>
+<th style="text-align: right;">Self-BLEU lower</th>
+<th style="text-align: right;">Dist-1 higher</th>
+<th style="text-align: right;">Dist-2 higher</th>
+<th style="text-align: right;">SBERT lower</th>
+<th style="text-align: right;">Quality higher</th>
+<th style="text-align: right;">Novelty higher</th>
+<th style="text-align: right;">Utility higher</th>
+<th style="text-align: right;">Fidelity higher</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Base</td>
+<td style="text-align: right;">0.086</td>
+<td style="text-align: right;">0.481</td>
+<td style="text-align: right;">0.894</td>
+<td style="text-align: right;">0.675</td>
+<td style="text-align: right;">3.417</td>
+<td style="text-align: right;">3.192</td>
+<td style="text-align: right;">3.058</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Prompt-only</td>
+<td style="text-align: right;">0.062</td>
+<td style="text-align: right;">0.576</td>
+<td style="text-align: right;">0.923</td>
+<td style="text-align: right;">0.708</td>
+<td style="text-align: right;">3.975</td>
+<td style="text-align: right;">3.458</td>
+<td style="text-align: right;">3.542</td>
+<td style="text-align: right;">3.042</td>
+</tr>
+<tr>
+<td>Single LoRA</td>
+<td style="text-align: right;">0.040</td>
+<td style="text-align: right;">0.597</td>
+<td style="text-align: right;">0.945</td>
+<td style="text-align: right;">0.481</td>
+<td style="text-align: right;">2.589</td>
+<td style="text-align: right;">4.650</td>
+<td style="text-align: right;">2.308</td>
+<td style="text-align: right;">1.975</td>
+</tr>
+<tr>
+<td>MoP-SFT</td>
+<td style="text-align: right;">0.026</td>
+<td style="text-align: right;">0.559</td>
+<td style="text-align: right;">0.943</td>
+<td style="text-align: right;">0.488</td>
+<td style="text-align: right;">2.633</td>
+<td style="text-align: right;">4.700</td>
+<td style="text-align: right;">2.308</td>
+<td style="text-align: right;">2.192</td>
+</tr>
+<tr>
+<td>MoP+DivPO</td>
+<td style="text-align: right;">0.056</td>
+<td style="text-align: right;">0.556</td>
+<td style="text-align: right;">0.920</td>
+<td style="text-align: right;">0.705</td>
+<td style="text-align: right;">3.931</td>
+<td style="text-align: right;">3.642</td>
+<td style="text-align: right;">3.542</td>
+<td style="text-align: right;">3.025</td>
+</tr>
+<tr>
+<td>MoP+DivPO v2</td>
+<td style="text-align: right;">0.051</td>
+<td style="text-align: right;">0.580</td>
+<td style="text-align: right;">0.931</td>
+<td style="text-align: right;">0.690</td>
+<td style="text-align: right;">3.956</td>
+<td style="text-align: right;">3.650</td>
+<td style="text-align: right;">3.550</td>
+<td style="text-align: right;">3.058</td>
+</tr>
+</tbody>
+</table>
+<p>Tabel ini menunjukkan bahwa hasil penelitian tidak boleh
+disederhanakan menjadi “MoP+DivPO selalu menang.” Ada trade-off yang
+jelas.</p>
+<p>Pertama, base model memiliki performa lebih rendah daripada metode
+berbasis persona pada sebagian besar metrik judge dan lexical diversity.
+MoP+DivPO memiliki peningkatan signifikan terhadap base pada Self-BLEU,
+Distinct-1, Distinct-2, quality, novelty, dan utility berdasarkan tabel
+signifikansi yang tersedia.</p>
+<p>Kedua, Single LoRA dan MoP-SFT menghasilkan diversity paling tinggi.
+Nilai Self-BLEU dan SBERT mereka rendah, sedangkan novelty dari judge
+tinggi. Namun, kualitas dan kegunaannya turun drastis. MoP-SFT memiliki
+quality 2.633 dan utility 2.308, sedangkan prompt-only memiliki quality
+3.975 dan utility 3.542. Artinya, diversity yang tinggi tidak otomatis
+berarti output lebih berguna.</p>
+<p>Ketiga, MoP+DivPO dan MoP+DivPO v2 berada pada posisi seimbang.
+Mereka tidak mengalahkan SFT pada semantic diversity, tetapi berhasil
+memulihkan quality dan utility. Dibandingkan MoP+DivPO awal, v2 lebih
+baik pada Distinct-1, Distinct-2, SBERT cosine, quality, novelty,
+utility, dan fidelity. Karena itu, v2 adalah varian final yang paling
+layak ditekankan.</p>
+<h3 id="kalibrasi-llm-as-judge">4.3 Kalibrasi LLM-as-judge</h3>
+<p>Hasil inter-judge agreement menunjukkan:</p>
+<table>
+<thead>
+<tr>
+<th>Metrik</th>
+<th style="text-align: right;">Spearman rho</th>
+<th>Interpretasi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Quality</td>
+<td style="text-align: right;">0.6972</td>
+<td>Borderline acceptable</td>
+</tr>
+<tr>
+<td>Persona fidelity</td>
+<td style="text-align: right;">0.6200</td>
+<td>Borderline acceptable</td>
+</tr>
+<tr>
+<td>Novelty</td>
+<td style="text-align: right;">0.2659</td>
+<td>Low agreement</td>
+</tr>
+<tr>
+<td>Utility</td>
+<td style="text-align: right;">0.5546</td>
+<td>Low-to-borderline agreement</td>
+</tr>
+</tbody>
+</table>
+<p>Implikasinya penting. Klaim novelty dari judge harus dibaca secara
+hati-hati karena agreement rendah. Quality dan fidelity lebih stabil.
+Oleh karena itu, novelty sebaiknya dipakai sebagai indikator arah, bukan
+bukti tunggal.</p>
+<h3 id="temuan-utama">4.4 Temuan utama</h3>
+<p><strong>Temuan 1: Persona separation berhasil.</strong> Keempat
+adapter menghasilkan distribusi output yang berbeda. Ini mendukung klaim
+bahwa MoP memberi inter-persona diversity.</p>
+<p><strong>Temuan 2: Diversity tanpa quality constraint tidak
+cukup.</strong> Single LoRA dan MoP-SFT menghasilkan output yang sangat
+beragam, tetapi kualitas dan utility rendah. Untuk pre-writing, output
+yang berbeda tetapi lemah tidak membantu penulis.</p>
+<p><strong>Temuan 3: DivPO v2 adalah mekanisme balancing.</strong> DivPO
+v2 bukan pemenang mutlak pada semua metrik. Kontribusinya adalah menjaga
+kualitas dan utility sambil mempertahankan sebagian keuntungan
+diversity.</p>
+<p><strong>Temuan 4: Prompt-only adalah baseline kuat.</strong>
+Prompt-only hampir menyamai atau mengalahkan v2 pada quality. Ini harus
+diakui. Keunggulan sistem terlatih perlu dijelaskan melalui
+distinctness, controllability, dan potensi skalabilitas, bukan hanya
+angka agregat.</p>
+<h3 id="pembahasan-kritis">4.5 Pembahasan kritis</h3>
+<p>Hasil penelitian ini menunjukkan bahwa diversity tidak bisa
+diperlakukan sebagai satu angka tunggal. Ada lexical diversity, semantic
+diversity, dan cognitive-style diversity. Distinct-1/2 dan Self-BLEU
+melihat variasi permukaan. SBERT melihat kedekatan makna. Persona
+distinctness melihat apakah gaya berpikir antar adapter benar-benar
+berbeda.</p>
+<p>Metode SFT bergerak kuat ke arah diversity, tetapi menurunkan
+usability. Ini kemungkinan terjadi karena model kecil dan adapter
+terbatas dapat didorong ke wilayah output yang tidak biasa, tetapi belum
+cukup stabil untuk menjaga kualitas argumen. DivPO v2 memperbaiki hal
+ini dengan memilih kandidat rare yang tetap melewati quality floor dan
+dengan menghitung rarity terhadap pool lintas persona.</p>
+<p>Secara naratif, paper ini paling koheren jika dibingkai sebagai studi
+diversity-quality frontier. Base model berada di area menengah.
+Prompt-only berada pada area high usability. SFT berada pada area high
+diversity tetapi low usability. DivPO v2 berada pada area balanced:
+tidak seekstrem SFT dalam diversity, tetapi jauh lebih berguna.</p>
+<h2 id="bab-5.-kesimpulan-dan-keterbatasan">BAB 5. Kesimpulan dan
+Keterbatasan</h2>
+<h3 id="kesimpulan">5.1 Kesimpulan</h3>
+<p>Penelitian ini awalnya diusulkan sebagai sistem pre-writing ideation
+berbasis Mixture of Persona dan DivPO. Setelah hasil eksperimen
+tersedia, framing yang lebih tepat adalah generasi counter-argument yang
+beragam menggunakan cognitive persona adapters dan diversity-aware
+preference optimization.</p>
+<p>Hasil paling kuat adalah validasi persona distinctness. Semua
+pasangan persona memiliki SBERT cosine rendah, sehingga empat persona
+dapat dipertahankan. Hasil kedua adalah trade-off antara diversity dan
+quality. Adapter SFT menghasilkan diversity tinggi, tetapi menurunkan
+quality dan utility. Hasil ketiga adalah peran DivPO v2 sebagai metode
+balancing. DivPO v2 tidak menang mutlak, tetapi menjadi varian paling
+seimbang untuk ditekankan dalam paper.</p>
+<p>Klaim akhir yang paling defensible adalah: MoP berhasil memisahkan
+mode berpikir, dan DivPO v2 membantu menjaga keseimbangan antara
+keberagaman dan kegunaan dalam generasi counter-argument oleh LLM
+kecil.</p>
+<h3 id="keterbatasan">5.2 Keterbatasan</h3>
+<p>Pertama, model dasar yang digunakan masih kecil, yaitu
+Qwen2.5-0.5B-Instruct. Beberapa kelemahan dapat berasal dari kapasitas
+model, bukan dari arsitektur MoP atau DivPO itu sendiri.</p>
+<p>Kedua, evaluasi menggunakan LLM-as-judge. Walaupun praktis, agreement
+untuk novelty masih rendah. Penelitian lanjutan sebaiknya menambahkan
+human evaluation.</p>
+<p>Ketiga, penelitian ini belum mengukur dampak langsung terhadap
+kualitas tulisan akhir manusia. Pre-writing adalah motivasi, sedangkan
+evaluasi aktual adalah counter-argument generation.</p>
+<p>Keempat, dataset persona berasal dari domain berbeda. Ini membantu
+pemisahan style, tetapi juga dapat membawa artifact domain. Dataset
+counter-argument yang lebih bersih untuk semua persona akan memperkuat
+penelitian berikutnya.</p>
+<h3 id="arah-penelitian-lanjutan">5.3 Arah penelitian lanjutan</h3>
+<p>Penelitian berikutnya dapat menggunakan base model yang lebih besar,
+memperbaiki data counter-argument lintas persona, menambahkan evaluasi
+manusia, dan menguji apakah output MoP+DivPO benar-benar membantu
+penulis menghasilkan tulisan akhir yang lebih beragam. Selain itu, DivPO
+v2 dapat dikembangkan dengan reward model kualitas yang lebih kuat
+daripada heuristic quality floor.</p>
+<h2 id="daftar-pustaka">Daftar Pustaka</h2>
+<ol type="1">
+<li>A. R. Doshi dan O. P. Hauser, “Generative AI enhances individual
+creativity but reduces the collective diversity of novel content,”
+<em>Science Advances</em>, 2024.
+https://www.science.org/doi/10.1126/sciadv.adn5290</li>
+<li>V. Padmakumar dan H. He, “Does Writing with Language Models Reduce
+Content Diversity?,” ICLR, 2024. https://arxiv.org/abs/2309.05196</li>
+<li>F. Wu, E. Black, dan V. Chandrasekaran, “Generative Monoculture in
+Large Language Models,” ICLR, 2025.
+https://arxiv.org/abs/2407.02209</li>
+<li>R. Kirk et al., “Understanding the Effects of RLHF on LLM
+Generalisation and Diversity,” ICLR, 2024.
+https://proceedings.iclr.cc/paper_files/paper/2024/hash/5a68d05006d5b05dd9463dd9c0219db0-Abstract-Conference.html</li>
+<li>J. Lanchantin et al., “Diverse Preference Optimization,” arXiv,
+2025. https://arxiv.org/abs/2501.18101</li>
+<li>E. J. Hu et al., “LoRA: Low-Rank Adaptation of Large Language
+Models,” ICLR, 2022. https://openreview.net/forum?id=nZeVKeeFYf9</li>
+<li>T. Dettmers, A. Pagnoni, A. Holtzman, dan L. Zettlemoyer, “QLoRA:
+Efficient Finetuning of Quantized LLMs,” NeurIPS, 2023.
+https://arxiv.org/abs/2305.14314</li>
+<li>D. Li et al., “MixLoRA: Enhancing Large Language Model Fine-Tuning
+with LoRA-based Mixture of Experts,” arXiv, 2024.
+https://arxiv.org/abs/2404.15159</li>
+<li>J. Zhang et al., “Conversations Gone Awry: Detecting Early Signs of
+Conversational Failure,” ACL, 2018.
+https://arxiv.org/abs/1805.05345</li>
+<li>S. Gretz et al., “A Large-scale Dataset for Argument Quality
+Ranking: Construction and Analysis,” AAAI, 2020.
+https://arxiv.org/abs/1911.11408</li>
+<li>Qwen Team, “Qwen2.5-0.5B-Instruct,” Hugging Face model card, 2024.
+https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct</li>
+</ol>
+</body>
+</html>

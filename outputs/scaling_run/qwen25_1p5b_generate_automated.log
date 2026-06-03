@@ -1,0 +1,147 @@
+Generating outputs for ['base', 'prompt_only', 'mop_sft', 'mop_divpo_v2'] on 30 prompts ...
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:   0%|          | 1/338 [00:00<00:51,  6.58it/s]Loading weights:  43%|████▎     | 147/338 [00:00<00:00, 670.14it/s]Loading weights:  68%|██████▊   | 231/338 [00:00<00:00, 734.11it/s]Loading weights:  93%|█████████▎| 315/338 [00:00<00:00, 759.21it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 686.30it/s]
+  [base] What is the future of remote work?
+  [base] How should cities adapt to climate change?
+  [base] What's wrong with current education systems?
+  [base] Why do startups fail in the first three years?
+  [base] How can governments handle aging populations?
+  [base] What makes a city worth living in?
+  [base] Why are mental health rates worsening globally?
+  [base] What's the right way to evaluate AI safety?
+  [base] How should universities change in the next decade?
+  [base] Why is public transit underfunded?
+  [base] What does meaningful work look like in 2035?
+  [base] Why is housing unaffordable in major cities?
+  [base] How should social media platforms be regulated?
+  [base] Why do diets fail for most people?
+  [base] What is the role of religion in modern society?
+  [base] How do we fix scientific peer review?
+  [base] Why is creative writing declining in schools?
+  [base] What's wrong with how we measure economic growth?
+  [base] How should we think about generational wealth?
+  [base] Why is loneliness rising in connected societies?
+  [base] CMV: Standardized testing should be abolished enti
+  [base] CMV: Working from home makes employees less produc
+  [base] CMV: Social media has done more harm than good for
+  [base] CMV: Universal basic income would discourage peopl
+  [base] CMV: Nuclear energy is the only realistic path to 
+  [base] CMV: College degrees are no longer worth the cost 
+  [base] CMV: Voting should be mandatory for all eligible c
+  [base] CMV: Cancel culture has gone too far and chills fr
+  [base] CMV: Self-driving cars will never be safe enough t
+  [base] CMV: Tipping culture should be replaced with highe
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:   0%|          | 1/338 [00:00<00:47,  7.08it/s]Loading weights:  36%|███▋      | 123/338 [00:00<00:00, 611.68it/s]Loading weights:  61%|██████    | 205/338 [00:00<00:00, 696.54it/s]Loading weights:  83%|████████▎ | 281/338 [00:00<00:00, 713.24it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 667.68it/s]
+  [prompt_only] What is the future of remote work?
+  [prompt_only] How should cities adapt to climate change?
+  [prompt_only] What's wrong with current education systems?
+  [prompt_only] Why do startups fail in the first three years?
+  [prompt_only] How can governments handle aging populations?
+  [prompt_only] What makes a city worth living in?
+  [prompt_only] Why are mental health rates worsening globally?
+  [prompt_only] What's the right way to evaluate AI safety?
+  [prompt_only] How should universities change in the next decade?
+  [prompt_only] Why is public transit underfunded?
+  [prompt_only] What does meaningful work look like in 2035?
+  [prompt_only] Why is housing unaffordable in major cities?
+  [prompt_only] How should social media platforms be regulated?
+  [prompt_only] Why do diets fail for most people?
+  [prompt_only] What is the role of religion in modern society?
+  [prompt_only] How do we fix scientific peer review?
+  [prompt_only] Why is creative writing declining in schools?
+  [prompt_only] What's wrong with how we measure economic growth?
+  [prompt_only] How should we think about generational wealth?
+  [prompt_only] Why is loneliness rising in connected societies?
+  [prompt_only] CMV: Standardized testing should be abolished enti
+  [prompt_only] CMV: Working from home makes employees less produc
+  [prompt_only] CMV: Social media has done more harm than good for
+  [prompt_only] CMV: Universal basic income would discourage peopl
+  [prompt_only] CMV: Nuclear energy is the only realistic path to 
+  [prompt_only] CMV: College degrees are no longer worth the cost 
+  [prompt_only] CMV: Voting should be mandatory for all eligible c
+  [prompt_only] CMV: Cancel culture has gone too far and chills fr
+  [prompt_only] CMV: Self-driving cars will never be safe enough t
+  [prompt_only] CMV: Tipping culture should be replaced with highe
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:   0%|          | 1/338 [00:00<00:41,  8.12it/s]Loading weights:  36%|███▋      | 123/338 [00:00<00:00, 626.86it/s]Loading weights:  61%|██████    | 207/338 [00:00<00:00, 711.37it/s]Loading weights:  86%|████████▌ | 291/338 [00:00<00:00, 732.49it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 689.05it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:   0%|          | 1/338 [00:00<00:43,  7.81it/s]Loading weights:  43%|████▎     | 147/338 [00:00<00:00, 747.15it/s]Loading weights:  68%|██████▊   | 231/338 [00:00<00:00, 773.78it/s]Loading weights:  93%|█████████▎| 315/338 [00:00<00:00, 776.05it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 731.31it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:   0%|          | 1/338 [00:00<00:41,  8.18it/s]Loading weights:  37%|███▋      | 125/338 [00:00<00:00, 665.97it/s]Loading weights:  63%|██████▎   | 212/338 [00:00<00:00, 754.21it/s]Loading weights:  86%|████████▋ | 292/338 [00:00<00:00, 768.96it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 714.88it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:   0%|          | 1/338 [00:00<00:37,  8.94it/s]Loading weights:  36%|███▋      | 123/338 [00:00<00:00, 681.33it/s]Loading weights:  61%|██████    | 207/338 [00:00<00:00, 731.56it/s]Loading weights:  86%|████████▌ | 291/338 [00:00<00:00, 763.12it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 711.72it/s]
+  [mop_sft] What is the future of remote work?
+  [mop_sft] How should cities adapt to climate change?
+  [mop_sft] What's wrong with current education systems?
+  [mop_sft] Why do startups fail in the first three years?
+  [mop_sft] How can governments handle aging populations?
+  [mop_sft] What makes a city worth living in?
+  [mop_sft] Why are mental health rates worsening globally?
+  [mop_sft] What's the right way to evaluate AI safety?
+  [mop_sft] How should universities change in the next decade?
+  [mop_sft] Why is public transit underfunded?
+  [mop_sft] What does meaningful work look like in 2035?
+  [mop_sft] Why is housing unaffordable in major cities?
+  [mop_sft] How should social media platforms be regulated?
+  [mop_sft] Why do diets fail for most people?
+  [mop_sft] What is the role of religion in modern society?
+  [mop_sft] How do we fix scientific peer review?
+  [mop_sft] Why is creative writing declining in schools?
+  [mop_sft] What's wrong with how we measure economic growth?
+  [mop_sft] How should we think about generational wealth?
+  [mop_sft] Why is loneliness rising in connected societies?
+  [mop_sft] CMV: Standardized testing should be abolished enti
+  [mop_sft] CMV: Working from home makes employees less produc
+  [mop_sft] CMV: Social media has done more harm than good for
+  [mop_sft] CMV: Universal basic income would discourage peopl
+  [mop_sft] CMV: Nuclear energy is the only realistic path to 
+  [mop_sft] CMV: College degrees are no longer worth the cost 
+  [mop_sft] CMV: Voting should be mandatory for all eligible c
+  [mop_sft] CMV: Cancel culture has gone too far and chills fr
+  [mop_sft] CMV: Self-driving cars will never be safe enough t
+  [mop_sft] CMV: Tipping culture should be replaced with highe
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:  10%|▉         | 33/338 [00:00<00:00, 329.22it/s]Loading weights:  33%|███▎      | 112/338 [00:00<00:00, 597.37it/s]Loading weights:  58%|█████▊    | 195/338 [00:00<00:00, 677.37it/s]Loading weights:  83%|████████▎ | 279/338 [00:00<00:00, 731.92it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 705.13it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:   0%|          | 1/338 [00:00<00:41,  8.18it/s]Loading weights:  39%|███▉      | 133/338 [00:00<00:00, 713.33it/s]Loading weights:  62%|██████▏   | 211/338 [00:00<00:00, 734.05it/s]Loading weights:  86%|████████▋ | 292/338 [00:00<00:00, 751.53it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 709.79it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:   0%|          | 1/338 [00:00<00:37,  8.93it/s]Loading weights:  40%|███▉      | 135/338 [00:00<00:00, 734.18it/s]Loading weights:  65%|██████▍   | 219/338 [00:00<00:00, 755.05it/s]Loading weights:  90%|████████▉ | 303/338 [00:00<00:00, 770.57it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 727.11it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:   0%|          | 1/338 [00:00<00:44,  7.59it/s]Loading weights:  39%|███▉      | 131/338 [00:00<00:00, 677.15it/s]Loading weights:  62%|██████▏   | 208/338 [00:00<00:00, 704.71it/s]Loading weights:  86%|████████▌ | 291/338 [00:00<00:00, 745.89it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 689.21it/s]
+  [mop_divpo_v2] What is the future of remote work?
+  [mop_divpo_v2] How should cities adapt to climate change?
+  [mop_divpo_v2] What's wrong with current education systems?
+  [mop_divpo_v2] Why do startups fail in the first three years?
+  [mop_divpo_v2] How can governments handle aging populations?
+  [mop_divpo_v2] What makes a city worth living in?
+  [mop_divpo_v2] Why are mental health rates worsening globally?
+  [mop_divpo_v2] What's the right way to evaluate AI safety?
+  [mop_divpo_v2] How should universities change in the next decade?
+  [mop_divpo_v2] Why is public transit underfunded?
+  [mop_divpo_v2] What does meaningful work look like in 2035?
+  [mop_divpo_v2] Why is housing unaffordable in major cities?
+  [mop_divpo_v2] How should social media platforms be regulated?
+  [mop_divpo_v2] Why do diets fail for most people?
+  [mop_divpo_v2] What is the role of religion in modern society?
+  [mop_divpo_v2] How do we fix scientific peer review?
+  [mop_divpo_v2] Why is creative writing declining in schools?
+  [mop_divpo_v2] What's wrong with how we measure economic growth?
+  [mop_divpo_v2] How should we think about generational wealth?
+  [mop_divpo_v2] Why is loneliness rising in connected societies?
+  [mop_divpo_v2] CMV: Standardized testing should be abolished enti
+  [mop_divpo_v2] CMV: Working from home makes employees less produc
+  [mop_divpo_v2] CMV: Social media has done more harm than good for
+  [mop_divpo_v2] CMV: Universal basic income would discourage peopl
+  [mop_divpo_v2] CMV: Nuclear energy is the only realistic path to 
+  [mop_divpo_v2] CMV: College degrees are no longer worth the cost 
+  [mop_divpo_v2] CMV: Voting should be mandatory for all eligible c
+  [mop_divpo_v2] CMV: Cancel culture has gone too far and chills fr
+  [mop_divpo_v2] CMV: Self-driving cars will never be safe enough t
+  [mop_divpo_v2] CMV: Tipping culture should be replaced with highe
+Wrote 480 generations -> outputs/evaluation_qwen25_1p5b_scale/generations.jsonl
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|██████████| 103/103 [00:00<00:00, 12078.54it/s]
+
+| Method | Self-BLEU↓ | Distinct-1↑ | Distinct-2↑ | SBERT-cos↓ |
+|---|---|---|---|---|
+| base | 0.099 | 0.486 | 0.889 | 0.772 |
+| prompt_only | 0.041 | 0.575 | 0.935 | 0.710 |
+| mop_sft | 0.022 | 0.577 | 0.953 | 0.511 |
+| mop_divpo_v2 | 0.048 | 0.561 | 0.930 | 0.707 |
+
+Wrote baseline_table.{md,csv,json} -> outputs/evaluation_qwen25_1p5b_scale
+
+Significance (mop_divpo_v2 beats baseline, p<0.05):
+  vs base: 4 metrics — self_bleu, distinct_1, distinct_2, sbert_cosine
+  vs prompt_only: 0 metrics — none
+  vs mop_sft: 0 metrics — none

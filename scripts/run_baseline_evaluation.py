@@ -47,16 +47,49 @@ def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")[:40]
 
 
+def _parse_overrides(values: list[str]) -> dict[str, str]:
+    parsed: dict[str, str] = {}
+    for value in values:
+        if "=" not in value:
+            raise ValueError(f"Expected METHOD=VALUE override, got {value!r}.")
+        method, override = value.split("=", 1)
+        if method not in METHODS:
+            raise ValueError(f"Unknown method in override: {method!r}.")
+        parsed[method] = override
+    return parsed
+
+
+def build_method_configs(
+    *,
+    stage_overrides: dict[str, str],
+    sft_stage_overrides: dict[str, str],
+) -> dict[str, dict]:
+    configs = {method: dict(cfg) for method, cfg in METHODS.items()}
+    for method, stage in stage_overrides.items():
+        configs[method]["stage"] = stage
+    for method, sft_stage in sft_stage_overrides.items():
+        configs[method]["sft_stage"] = sft_stage
+    return configs
+
+
 def generate_all(methods: list[str], prompts: list[str], token: str | None,
-                 *, n_base: int = 4, temperature: float = 0.9,
+                 *, method_configs: dict[str, dict] | None = None,
+                 adapter_prefix: str = "DasonTio/mop-divpo-coauthor",
+                 base_model: str = "Qwen/Qwen2.5-0.5B-Instruct",
+                 n_base: int = 4, temperature: float = 0.9,
                  max_new_tokens: int = 256) -> list[dict]:
     from mop_divpo.inference.generate import MoPGenerator
 
+    configs = method_configs or METHODS
     records: list[dict] = []
     for method in methods:
-        cfg = METHODS[method]
+        cfg = configs[method]
         gen = MoPGenerator(
-            adapter_stage=cfg["stage"], token=token,
+            adapter_prefix=adapter_prefix,
+            adapter_stage=cfg["stage"],
+            sft_stage=cfg.get("sft_stage", "sft"),
+            base_model=base_model,
+            token=token,
             use_persona_prompt=cfg["use_persona_prompt"],
         )
         try:
@@ -124,6 +157,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--skip-generation", action="store_true",
                    help="Reuse existing generations.jsonl.")
     p.add_argument("--outdir", default="outputs/evaluation")
+    p.add_argument("--base-model", default="Qwen/Qwen2.5-0.5B-Instruct")
+    p.add_argument("--adapter-prefix", default="DasonTio/mop-divpo-coauthor",
+                   help="HF repo id or local adapter root containing stage/persona folders.")
+    p.add_argument("--method-stage", action="append", default=[],
+                   help="Override generation stage for one method, e.g. mop_divpo_v2=divpo_v2_1p5b.")
+    p.add_argument("--method-sft-stage", action="append", default=[],
+                   help="Override SFT chain stage for one method, e.g. mop_divpo_v2=sft_1p5b.")
+    p.add_argument("--headline", default=HEADLINE,
+                   help="Method used as significance reference.")
     p.add_argument("--token", default=None)
     return p
 
@@ -133,6 +175,10 @@ def main() -> None:
     token = args.token or os.environ.get("HF_TOKEN") or None
     outdir = Path(args.outdir)
     gen_path = outdir / "generations.jsonl"
+    method_configs = build_method_configs(
+        stage_overrides=_parse_overrides(args.method_stage),
+        sft_stage_overrides=_parse_overrides(args.method_sft_stage),
+    )
 
     from mop_divpo.eval.prompts import EVALUATION_PROMPTS
 
@@ -147,7 +193,14 @@ def main() -> None:
         print(f"Loaded {len(records)} generations from {gen_path}")
     else:
         print(f"Generating outputs for {args.methods} on {len(prompts)} prompts ...")
-        records = generate_all(args.methods, prompts, token)
+        records = generate_all(
+            args.methods,
+            prompts,
+            token,
+            method_configs=method_configs,
+            adapter_prefix=args.adapter_prefix,
+            base_model=args.base_model,
+        )
         write_jsonl(gen_path, records)
         print(f"Wrote {len(records)} generations -> {gen_path}")
     if args.only_generate:
@@ -216,13 +269,13 @@ def main() -> None:
 
     specs = all_metric_specs()
     significance: dict[str, dict[str, dict]] = {}
-    if HEADLINE in merged_obs:
+    if args.headline in merged_obs:
         for method in args.methods:
-            if method == HEADLINE:
+            if method == args.headline:
                 continue
             significance[method] = {}
             for metric, (_name, lower) in specs.items():
-                a = merged_obs[HEADLINE].get(metric)
+                a = merged_obs[args.headline].get(metric)
                 b = merged_obs[method].get(metric)
                 if a and b:
                     significance[method][metric] = bootstrap_paired_pvalue(
@@ -235,13 +288,17 @@ def main() -> None:
     (outdir / "baseline_table.md").write_text(
         f"# Baseline Evaluation\n\n{table_md}\n\n"
         f"(↓ lower is better, ↑ higher is better; L = LLM-judge. "
-        f"Significance vs {HEADLINE} in baseline_table.json.)\n",
+        f"Significance vs {args.headline} in baseline_table.json.)\n",
         encoding="utf-8",
     )
     (outdir / "baseline_table.csv").write_text(table_csv, encoding="utf-8")
     (outdir / "baseline_table.json").write_text(
         json.dumps({"summary": summary, "significance": significance,
-                    "n_prompts": len(prompts), "methods": args.methods},
+                    "n_prompts": len(prompts), "methods": args.methods,
+                    "base_model": args.base_model,
+                    "adapter_prefix": args.adapter_prefix,
+                    "method_configs": {m: method_configs[m] for m in args.methods},
+                    "headline": args.headline},
                    ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
@@ -249,7 +306,7 @@ def main() -> None:
     print("\n" + table_md)
     print(f"\nWrote baseline_table.{{md,csv,json}} -> {outdir}")
     if significance:
-        print(f"\nSignificance (MoP+DivPO beats baseline, p<0.05):")
+        print(f"\nSignificance ({args.headline} beats baseline, p<0.05):")
         for method, metrics in significance.items():
             wins = [m for m, s in metrics.items() if s["mean_diff"] > 0 and s["p_value"] < 0.05]
             print(f"  vs {method}: {len(wins)} metrics — {', '.join(wins) or 'none'}")

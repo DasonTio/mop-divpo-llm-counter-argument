@@ -17,7 +17,10 @@ from mop_divpo.eval.aggregate import (
     summarize,
 )
 from scripts.experiment_persona_distinctness import compute_prompt_conditioned_matrix
-from scripts.run_baseline_evaluation import filter_records_to_prompts
+from scripts.run_baseline_evaluation import (
+    build_method_configs,
+    filter_records_to_prompts,
+)
 
 
 class AdapterChainTests(unittest.TestCase):
@@ -37,6 +40,18 @@ class AdapterChainTests(unittest.TestCase):
         self.assertEqual(
             adapter_chain("divpo_v2", "minimalist"),
             ["sft/minimalist", "divpo_v2/minimalist"],
+        )
+
+    def test_custom_sft_stage_loads_one(self):
+        self.assertEqual(
+            adapter_chain("sft_1p5b", "contrarian"),
+            ["sft_1p5b/contrarian"],
+        )
+
+    def test_custom_divpo_stage_uses_matching_sft_stage(self):
+        self.assertEqual(
+            adapter_chain("divpo_v2_1p5b", "minimalist", sft_stage="sft_1p5b"),
+            ["sft_1p5b/minimalist", "divpo_v2_1p5b/minimalist"],
         )
 
     def test_single_uses_single_name(self):
@@ -67,6 +82,22 @@ class BuildMessagesTests(unittest.TestCase):
         messages = build_messages("topic", system_prompt="You are X.")
         self.assertEqual(messages[0]["role"], "system")
         self.assertEqual(messages[1]["role"], "user")
+
+
+class BaselineEvaluationConfigTests(unittest.TestCase):
+    def test_method_overrides_keep_scaling_stages_isolated(self):
+        configs = build_method_configs(
+            stage_overrides={
+                "mop_sft": "sft_1p5b",
+                "mop_divpo_v2": "divpo_v2_1p5b",
+            },
+            sft_stage_overrides={"mop_divpo_v2": "sft_1p5b"},
+        )
+
+        self.assertEqual(configs["mop_sft"]["stage"], "sft_1p5b")
+        self.assertEqual(configs["mop_divpo_v2"]["stage"], "divpo_v2_1p5b")
+        self.assertEqual(configs["mop_divpo_v2"]["sft_stage"], "sft_1p5b")
+        self.assertEqual(configs["prompt_only"]["stage"], "base")
 
 
 class AggregateTests(unittest.TestCase):

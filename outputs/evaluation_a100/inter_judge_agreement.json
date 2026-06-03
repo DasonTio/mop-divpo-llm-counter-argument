@@ -1,0 +1,26 @@
+{
+  "quality": {
+    "spearman_r": 0.6972,
+    "p_value": 0.0,
+    "n": 48,
+    "interpretation": "borderline"
+  },
+  "persona_fidelity": {
+    "spearman_r": 0.62,
+    "p_value": 0.0003,
+    "n": 29,
+    "interpretation": "borderline"
+  },
+  "novelty": {
+    "spearman_r": 0.2659,
+    "p_value": 0.0678,
+    "n": 48,
+    "interpretation": "low_upgrade_judge"
+  },
+  "utility": {
+    "spearman_r": 0.5546,
+    "p_value": 0.0,
+    "n": 48,
+    "interpretation": "low_upgrade_judge"
+  }
+}

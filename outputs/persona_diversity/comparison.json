@@ -1,0 +1,1420 @@
+{
+  "runs": [
+    {
+      "run_label": "qwen25_0p5b",
+      "n_records": 720,
+      "methods": [
+        "base",
+        "prompt_only",
+        "single_lora",
+        "mop_sft",
+        "mop_divpo",
+        "mop_divpo_v2"
+      ],
+      "metrics": {
+        "base": {
+          "prompt_controlled_inter_persona": {
+            "summary": {
+              "mean": null,
+              "std": null,
+              "n": 0
+            },
+            "per_prompt": {},
+            "per_pair": {},
+            "definition": "Mean SBERT cosine distance between persona outputs for the same prompt."
+          },
+          "same_prompt_intra_persona": {
+            "summary": {
+              "mean": 0.3249427884817123,
+              "std": 0.15137583433187432,
+              "n": 30
+            },
+            "per_persona": {
+              "none": {
+                "mean": 0.3249427884817123,
+                "std": 0.15137583433187432,
+                "n": 30
+              }
+            },
+            "per_prompt_persona": {
+              "What is the future of remote work?::none": 0.24677222967147827,
+              "How should cities adapt to climate change?::none": 0.21775580942630768,
+              "What's wrong with current education systems?::none": 0.4316806495189667,
+              "Why do startups fail in the first three years?::none": 0.38431262969970703,
+              "How can governments handle aging populations?::none": 0.2263209968805313,
+              "What makes a city worth living in?::none": 0.2298726588487625,
+              "Why are mental health rates worsening globally?::none": 0.31009164452552795,
+              "What's the right way to evaluate AI safety?::none": 0.20068533718585968,
+              "How should universities change in the next decade?::none": 0.23746530711650848,
+              "Why is public transit underfunded?::none": 0.23303838074207306,
+              "What does meaningful work look like in 2035?::none": 0.4185129404067993,
+              "Why is housing unaffordable in major cities?::none": 0.557508111000061,
+              "How should social media platforms be regulated?::none": 0.15432940423488617,
+              "Why do diets fail for most people?::none": 0.3950637876987457,
+              "What is the role of religion in modern society?::none": 0.3083018958568573,
+              "How do we fix scientific peer review?::none": 0.22957998514175415,
+              "Why is creative writing declining in schools?::none": 0.23710162937641144,
+              "What's wrong with how we measure economic growth?::none": 0.3132157027721405,
+              "How should we think about generational wealth?::none": 0.16867761313915253,
+              "Why is loneliness rising in connected societies?::none": 0.22113096714019775,
+              "CMV: Standardized testing should be abolished entirely.::none": 0.6333350539207458,
+              "CMV: Working from home makes employees less productive.::none": 0.17815423011779785,
+              "CMV: Social media has done more harm than good for society.::none": 0.2794893682003021,
+              "CMV: Universal basic income would discourage people from working.::none": 0.2420579195022583,
+              "CMV: Nuclear energy is the only realistic path to decarbonization.::none": 0.6341166496276855,
+              "CMV: College degrees are no longer worth the cost for most people.::none": 0.611126720905304,
+              "CMV: Voting should be mandatory for all eligible citizens.::none": 0.24009104073047638,
+              "CMV: Cancel culture has gone too far and chills free expression.::none": 0.3134385049343109,
+              "CMV: Self-driving cars will never be safe enough to fully trust.::none": 0.23336660861968994,
+              "CMV: Tipping culture should be replaced with higher fixed wages.::none": 0.6616898775100708
+            },
+            "available": true,
+            "definition": "Mean SBERT cosine distance among repeated samples for the same prompt and persona."
+          },
+          "cross_prompt_persona_dispersion": {
+            "summary": {
+              "mean": null,
+              "std": null,
+              "n": 0
+            },
+            "per_persona": {},
+            "caveat": "Prompt-confounded: outputs differ by prompt as well as persona.",
+            "definition": "Mean SBERT cosine distance among one persona's outputs across prompts."
+          },
+          "persona_over_base_sampling": {
+            "ratio": {
+              "mean": null,
+              "std": null,
+              "n": 0
+            },
+            "paired_ratio": {
+              "mean": null,
+              "std": null,
+              "n": 0
+            },
+            "difference": {
+              "mean": null,
+              "std": null,
+              "n": 0
+            },
+            "n_matched_prompts": 0,
+            "definition": "Ratio of mean inter-persona distance to mean base same-prompt random-sample distance over matched prompts. paired_ratio stores the mean of per-prompt ratios."
+          },
+          "persona_silhouette": {
+            "summary": {
+              "mean": null,
+              "std": null,
+              "n": 0
+            },
+            "per_label": {},
+            "definition": "Cosine-distance silhouette by persona label across all prompts; positive means persona clustering."
+          }
+        },
+        "prompt_only": {
+          "prompt_controlled_inter_persona": {
+            "summary": {
+              "mean": 0.29197407125896135,
+              "std": 0.09350461740396539,
+              "n": 30
+            },
+            "per_prompt": {
+              "What is the future of remote work?": 0.19639039935416394,
+              "How should cities adapt to climate change?": 0.2593465358732316,
+              "What's wrong with current education systems?": 0.4072935322790237,
+              "Why do startups fail in the first three years?": 0.2956610242120705,
+              "How can governments handle aging populations?": 0.25168985503710534,
+              "What makes a city worth living in?": 0.19915833836213734,
+              "Why are mental health rates worsening globally?": 0.3153971941390265,
+              "What's the right way to evaluate AI safety?": 0.16308197402147367,
+              "How should universities change in the next decade?": 0.29574915805917357,
+              "Why is public transit underfunded?": 0.2211515239099725,
+              "What does meaningful work look like in 2035?": 0.3989712742474292,
+              "Why is housing unaffordable in major cities?": 0.22580193626423642,
+              "How should social media platforms be regulated?": 0.23918038871294645,
+              "Why do diets fail for most people?": 0.3498307291276528,
+              "What is the role of religion in modern society?": 0.23225182563950522,
+              "How do we fix scientific peer review?": 0.2505882387429928,
+              "Why is creative writing declining in schools?": 0.20457139906497213,
+              "What's wrong with how we measure economic growth?": 0.3251229966719153,
+              "How should we think about generational wealth?": 0.19041213737964427,
+              "Why is loneliness rising in connected societies?": 0.18816933000339442,
+              "CMV: Standardized testing should be abolished entirely.": 0.2561711204142047,
+              "CMV: Working from home makes employees less productive.": 0.3770708859804321,
+              "CMV: Social media has done more harm than good for society.": 0.3722157994983828,
+              "CMV: Universal basic income would discourage people from working.": 0.2999790596384712,
+              "CMV: Nuclear energy is the only realistic path to decarbonization.": 0.21670196007028197,
+              "CMV: College degrees are no longer worth the cost for most people.": 0.44148589771325425,
+              "CMV: Voting should be mandatory for all eligible citizens.": 0.3324837891378065,
+              "CMV: Cancel culture has gone too far and chills free expression.": 0.3892054641318811,
+              "CMV: Self-driving cars will never be safe enough to fully trust.": 0.27848930977225766,
+              "CMV: Tipping culture should be replaced with higher fixed wages.": 0.5855990603098018
+            },
+            "per_pair": {
+              "contrarian__cross_domain_analogist": {
+                "mean": 0.312281949738595,
+                "std": 0.14592022011459524,
+                "n": 30
+              },
+              "contrarian__minimalist": {
+                "mean": 0.2914503718817398,
+                "std": 0.09638675942554302,
+                "n": 30
+              },
+              "contrarian__systems_thinker": {
+                "mean": 0.23027636349207414,
+                "std": 0.09459365146595938,
+                "n": 30
+              },
+              "cross_domain_analogist__minimalist": {
+                "mean": 0.32986343181331185,
+                "std": 0.14842647938447803,
+                "n": 30
+              },
+              "systems_thinker__cross_domain_analogist": {
+                "mean": 0.28549387110073954,
+                "std": 0.1194748335216353,
+                "n": 30
+              },
+              "systems_thinker__minimalist": {
+                "mean": 0.3024784395273081,
+                "std": 0.1179103199911769,
+                "n": 30
+              }
+            },
+            "definition": "Mean SBERT cosine distance between persona outputs for the same prompt."
+          },
+          "same_prompt_intra_persona": {
+            "summary": {
+              "mean": null,
+              "std": null,
+              "n": 0
+            },
+            "per_persona": {},
+            "per_prompt_persona": {},
+            "available": false,
+            "definition": "Mean SBERT cosine distance among repeated samples for the same prompt and persona."
+          },
+          "cross_prompt_persona_dispersion": {
+            "summary": {
+              "mean": 0.8383957147598267,
+              "std": 0.0046802978081707525,
+              "n": 4
+            },
+            "per_persona": {
+              "contrarian": 0.8378759026527405,
+              "systems_thinker": 0.8337680101394653,
+              "cross_domain_analogist": 0.8370463848114014,
+              "minimalist": 0.8448925614356995
+            },
+            "caveat": "Prompt-confounded: outputs differ by prompt as well as persona.",
+            "definition": "Mean SBERT cosine distance among one persona's outputs across prompts."
+          },
+          "persona_over_base_sampling": {
+            "ratio": {
+              "mean": 0.8985399325930681,
+              "std": 0.0,
+              "n": 30
+            },
+            "paired_ratio": {
+              "mean": 1.0027510830421726,
+              "std": 0.3522843754655423,
+              "n": 30
+            },
+            "difference": {
+              "mean": -0.03296871722275095,
+              "std": 0.13572425837414326,
+              "n": 30
+            },
+            "n_matched_prompts": 30,
+            "definition": "Ratio of mean inter-persona distance to mean base same-prompt random-sample distance over matched prompts. paired_ratio stores the mean of per-prompt ratios."
+          },
+          "persona_silhouette": {
+            "summary": {
+              "mean": -0.03001861116833944,
+              "std": 0.015253216340098874,
+              "n": 120
+            },
+            "per_label": {
+              "contrarian": {
+                "mean": -0.0321041410878351,
+                "std": 0.01071367378597154,
+                "n": 30
+              },
+              "systems_thinker": {
+                "mean": -0.02671659128008245,
+                "std": 0.012785100333669721,
+                "n": 30
+              },
+              "cross_domain_analogist": {
+                "mean": -0.028107017491653393,
+                "std": 0.019681690460671867,
+                "n": 30
+              },
+              "minimalist": {
+                "mean": -0.03314669481378681,
+                "std": 0.01610648921876876,
+                "n": 30
+              }
+            },
+            "definition": "Cosine-distance silhouette by persona label across all prompts; positive means persona clustering."
+          }
+        },
+        "single_lora": {
+          "prompt_controlled_inter_persona": {
+            "summary": {
+              "mean": 0.5189566056229341,
+              "std": 0.1289268157665657,
+              "n": 30
+            },
+            "per_prompt": {
+              "What is the future of remote work?": 0.4419318696091583,
+              "How should cities adapt to climate change?": 0.46474703077573315,
+              "What's wrong with current education systems?": 0.7212477153476966,
+              "Why do startups fail in the first three years?": 0.5876855081995868,
+              "How can governments handle aging populations?": 0.7136323454459026,
+              "What makes a city worth living in?": 0.5529718089330999,
+              "Why are mental health rates worsening globally?": 0.47458167060409373,
+              "What's the right way to evaluate AI safety?": 0.6065961972589301,
+              "How should universities change in the next decade?": 0.5218101930208054,
+              "Why is public transit underfunded?": 0.5879258261610735,
+              "What does meaningful work look like in 2035?": 0.680862483242601,
+              "Why is housing unaffordable in major cities?": 0.3228584939033421,
+              "How should social media platforms be regulated?": 0.4963524260372642,
+              "Why do diets fail for most people?": 0.548615294951637,
+              "What is the role of religion in modern society?": 0.4383072041357578,
+              "How do we fix scientific peer review?": 0.7346678970034564,
+              "Why is creative writing declining in schools?": 0.3509446562376645,
+              "What's wrong with how we measure economic growth?": 0.4379078345066761,
+              "How should we think about generational wealth?": 0.4356877163759065,
+              "Why is loneliness rising in connected societies?": 0.3843153420032874,
+              "CMV: Standardized testing should be abolished entirely.": 0.3849774316009427,
+              "CMV: Working from home makes employees less productive.": 0.5407810277198487,
+              "CMV: Social media has done more harm than good for society.": 0.5080606285035444,
+              "CMV: Universal basic income would discourage people from working.": 0.3960541948746803,
+              "CMV: Nuclear energy is the only realistic path to decarbonization.": 0.5028107221426672,
+              "CMV: College degrees are no longer worth the cost for most people.": 0.49348849509203796,
+              "CMV: Voting should be mandatory for all eligible citizens.": 0.6083140531173854,
+              "CMV: Cancel culture has gone too far and chills free expression.": 0.8361610331125001,
+              "CMV: Self-driving cars will never be safe enough to fully trust.": 0.50276790730166,
+              "CMV: Tipping culture should be replaced with higher fixed wages.": 0.29163316146908075
+            },
+            "per_pair": {
+              "contrarian__cross_domain_analogist": {
+                "mean": 0.498753334109084,
+                "std": 0.19707610954897165,
+                "n": 30
+              },
+              "contrarian__minimalist": {
+                "mean": 0.5148811505635473,
+                "std": 0.15787893022466948,
+                "n": 30
+              },
+              "contrarian__systems_thinker": {
+                "mean": 0.505396166096821,
+                "std": 0.14407960897291716,
+                "n": 30
+              },
+              "cross_domain_analogist__minimalist": {
+                "mean": 0.5551397759778293,
+                "std": 0.20215366894267872,
+                "n": 30
+              },
+              "systems_thinker__cross_domain_analogist": {
+                "mean": 0.539318173349463,
+                "std": 0.18030923217860564,
+                "n": 30
+              },
+              "systems_thinker__minimalist": {
+                "mean": 0.5002510336408597,
+                "std": 0.1629453640037241,
+                "n": 30
+              }
+            },
+            "definition": "Mean SBERT cosine distance between persona outputs for the same prompt."
+          },
+          "same_prompt_intra_persona": {
+            "summary": {
+              "mean": null,
+              "std": null,
+              "n": 0
+            },
+            "per_persona": {},
+            "per_prompt_persona": {},
+            "available": false,
+            "definition": "Mean SBERT cosine distance among repeated samples for the same prompt and persona."
+          },
+          "cross_prompt_persona_dispersion": {
+            "summary": {
+              "mean": 0.870857834815979,
+              "std": 0.004143317911574664,
+              "n": 4
+            },
+            "per_persona": {
+              "contrarian": 0.8659732937812805,
+              "systems_thinker": 0.8746265172958374,
+              "cross_domain_analogist": 0.873947262763977,
+              "minimalist": 0.868884265422821
+            },
+            "caveat": "Prompt-confounded: outputs differ by prompt as well as persona.",
+            "definition": "Mean SBERT cosine distance among one persona's outputs across prompts."
+          },
+          "persona_over_base_sampling": {
+            "ratio": {
+              "mean": 1.5970706968071113,
+              "std": 0.0,
+              "n": 30
+            },
+            "paired_ratio": {
+              "mean": 1.9027744980653576,
+              "std": 0.8147008149560806,
+              "n": 30
+            },
+            "difference": {
+              "mean": 0.19401381714122168,
+              "std": 0.22104781005422391,
+              "n": 30
+            },
+            "n_matched_prompts": 30,
+            "definition": "Ratio of mean inter-persona distance to mean base same-prompt random-sample distance over matched prompts. paired_ratio stores the mean of per-prompt ratios."
+          },
+          "persona_silhouette": {
+            "summary": {
+              "mean": -0.02294220136271492,
+              "std": 0.01837045148273749,
+              "n": 120
+            },
+            "per_label": {
+              "contrarian": {
+                "mean": -0.01875846925984741,
+                "std": 0.018062227736759445,
+                "n": 30
+              },
+              "systems_thinker": {
+                "mean": -0.026044616111305617,
+                "std": 0.01637917055288742,
+                "n": 30
+              },
+              "cross_domain_analogist": {
+                "mean": -0.024530701145069958,
+                "std": 0.01890224329663054,
+                "n": 30
+              },
+              "minimalist": {
+                "mean": -0.02243501893463669,
+                "std": 0.020051144438821115,
+                "n": 30
+              }
+            },
+            "definition": "Cosine-distance silhouette by persona label across all prompts; positive means persona clustering."
+          }
+        },
+        "mop_sft": {
+          "prompt_controlled_inter_persona": {
+            "summary": {
+              "mean": 0.5120718588532615,
+              "std": 0.12192915117034425,
+              "n": 30
+            },
+            "per_prompt": {
+              "What is the future of remote work?": 0.387601497341676,
+              "How should cities adapt to climate change?": 0.37452445603213197,
+              "What's wrong with current education systems?": 0.7894779861492139,
+              "Why do startups fail in the first three years?": 0.4198506465813497,
+              "How can governments handle aging populations?": 0.5585525433786339,
+              "What makes a city worth living in?": 0.4271908582595727,
+              "Why are mental health rates worsening globally?": 0.5187953102630056,
+              "What's the right way to evaluate AI safety?": 0.5398111016993777,
+              "How should universities change in the next decade?": 0.5022793062041854,
+              "Why is public transit underfunded?": 0.41432222150163217,
+              "What does meaningful work look like in 2035?": 0.510076652796618,
+              "Why is housing unaffordable in major cities?": 0.666351462921016,
+              "How should social media platforms be regulated?": 0.6967878284688848,
+              "Why do diets fail for most people?": 0.42690058901458344,
+              "What is the role of religion in modern society?": 0.6843620304896536,
+              "How do we fix scientific peer review?": 0.4786944210901745,
+              "Why is creative writing declining in schools?": 0.442113140922499,
+              "What's wrong with how we measure economic growth?": 0.47852444589536597,
+              "How should we think about generational wealth?": 0.31062104672061996,
+              "Why is loneliness rising in connected societies?": 0.3987720729269329,
+              "CMV: Standardized testing should be abolished entirely.": 0.758385574691489,
+              "CMV: Working from home makes employees less productive.": 0.3800976979532626,
+              "CMV: Social media has done more harm than good for society.": 0.4054037923530091,
+              "CMV: Universal basic income would discourage people from working.": 0.6216245075013854,
+              "CMV: Nuclear energy is the only realistic path to decarbonization.": 0.5021193479190343,
+              "CMV: College degrees are no longer worth the cost for most people.": 0.46218739781903584,
+              "CMV: Voting should be mandatory for all eligible citizens.": 0.6429289415237928,
+              "CMV: Cancel culture has gone too far and chills free expression.": 0.5607902847957035,
+              "CMV: Self-driving cars will never be safe enough to fully trust.": 0.42327272419576456,
+              "CMV: Tipping culture should be replaced with higher fixed wages.": 0.5797358781882377
+            },
+            "per_pair": {
+              "contrarian__cross_domain_analogist": {
+                "mean": 0.5118640476487865,
+                "std": 0.18857624412684046,
+                "n": 30
+              },
+              "contrarian__minimalist": {
+                "mean": 0.5142024151171236,
+                "std": 0.1770208890535394,
+                "n": 30
+              },
+              "contrarian__systems_thinker": {
+                "mean": 0.5107649135031772,
+                "std": 0.19135810732844366,
+                "n": 30
+              },
+              "cross_domain_analogist__minimalist": {
+                "mean": 0.5026287110696166,
+                "std": 0.1725431169055404,
+                "n": 30
+              },
+              "systems_thinker__cross_domain_analogist": {
+                "mean": 0.5073264652714449,
+                "std": 0.2009313965621998,
+                "n": 30
+              },
+              "systems_thinker__minimalist": {
+                "mean": 0.5256446005094197,
+                "std": 0.17023505273524833,
+                "n": 30
+              }
+            },
+            "definition": "Mean SBERT cosine distance between persona outputs for the same prompt."
+          },
+          "same_prompt_intra_persona": {
+            "summary": {
+              "mean": null,
+              "std": null,
+              "n": 0
+            },
+            "per_persona": {},
+            "per_prompt_persona": {},
+            "available": false,
+            "definition": "Mean SBERT cosine distance among repeated samples for the same prompt and persona."
+          },
+          "cross_prompt_persona_dispersion": {
+            "summary": {
+              "mean": 0.8720164597034454,
+              "std": 0.02292303084353875,
+              "n": 4
+            },
+            "per_persona": {
+              "contrarian": 0.8565617799758911,
+              "systems_thinker": 0.9002124071121216,
+              "cross_domain_analogist": 0.8808341026306152,
+              "minimalist": 0.8504575490951538
+            },
+            "caveat": "Prompt-confounded: outputs differ by prompt as well as persona.",
+            "definition": "Mean SBERT cosine distance among one persona's outputs across prompts."
+          },
+          "persona_over_base_sampling": {
+            "ratio": {
+              "mean": 1.575883130830216,
+              "std": 0.0,
+              "n": 30
+            },
+            "paired_ratio": {
+              "mean": 1.8066849044983366,
+              "std": 0.737248012430537,
+              "n": 30
+            },
+            "difference": {
+              "mean": 0.18712907037154908,
+              "std": 0.1549501166271301,
+              "n": 30
+            },
+            "n_matched_prompts": 30,
+            "definition": "Ratio of mean inter-persona distance to mean base same-prompt random-sample distance over matched prompts. paired_ratio stores the mean of per-prompt ratios."
+          },
+          "persona_silhouette": {
+            "summary": {
+              "mean": -0.01141974635702372,
+              "std": 0.026818165039603725,
+              "n": 120
+            },
+            "per_label": {
+              "contrarian": {
+                "mean": -0.0037519469826296495,
+                "std": 0.025186454884178644,
+                "n": 30
+              },
+              "systems_thinker": {
+                "mean": -0.030510517911308672,
+                "std": 0.021442045843676812,
+                "n": 30
+              },
+              "cross_domain_analogist": {
+                "mean": -0.019053462995284837,
+                "std": 0.019808767600231314,
+                "n": 30
+              },
+              "minimalist": {
+                "mean": 0.007636942461128284,
+                "std": 0.02430926752395998,
+                "n": 30
+              }
+            },
+            "definition": "Cosine-distance silhouette by persona label across all prompts; positive means persona clustering."
+          }
+        },
+        "mop_divpo": {
+          "prompt_controlled_inter_persona": {
+            "summary": {
+              "mean": 0.29536123074621984,
+              "std": 0.08863920992760695,
+              "n": 30
+            },
+            "per_prompt": {
+              "What is the future of remote work?": 0.16097083538909365,
+              "How should cities adapt to climate change?": 0.23234024771540918,
+              "What's wrong with current education systems?": 0.45422531914196956,
+              "Why do startups fail in the first three years?": 0.2141939509206582,
+              "How can governments handle aging populations?": 0.32886671423609143,
+              "What makes a city worth living in?": 0.2965206534291656,
+              "Why are mental health rates worsening globally?": 0.36283553771920635,
+              "What's the right way to evaluate AI safety?": 0.1737308234617585,
+              "How should universities change in the next decade?": 0.41565952267717776,
+              "Why is public transit underfunded?": 0.2307936973443235,
+              "What does meaningful work look like in 2035?": 0.42883151649547346,
+              "Why is housing unaffordable in major cities?": 0.465468927947873,
+              "How should social media platforms be regulated?": 0.22686503376456116,
+              "Why do diets fail for most people?": 0.2853564515636005,
+              "What is the role of religion in modern society?": 0.2868701605728555,
+              "How do we fix scientific peer review?": 0.23793826176928087,
+              "Why is creative writing declining in schools?": 0.2713750710446324,
+              "What's wrong with how we measure economic growth?": 0.30457837627489165,
+              "How should we think about generational wealth?": 0.2182137837544995,
+              "Why is loneliness rising in connected societies?": 0.1718011018723132,
+              "CMV: Standardized testing should be abolished entirely.": 0.46419008439811016,
+              "CMV: Working from home makes employees less productive.": 0.37090523532978037,
+              "CMV: Social media has done more harm than good for society.": 0.3201599602330388,
+              "CMV: Universal basic income would discourage people from working.": 0.31748567848321224,
+              "CMV: Nuclear energy is the only realistic path to decarbonization.": 0.2588591668880766,
+              "CMV: College degrees are no longer worth the cost for most people.": 0.29412674316522486,
+              "CMV: Voting should be mandatory for all eligible citizens.": 0.38175904590280746,
+              "CMV: Cancel culture has gone too far and chills free expression.": 0.24897307108337863,
+              "CMV: Self-driving cars will never be safe enough to fully trust.": 0.21819426119493046,
+              "CMV: Tipping culture should be replaced with higher fixed wages.": 0.21874768861319813
+            },
+            "per_pair": {
+              "contrarian__cross_domain_analogist": {
+                "mean": 0.28741181635901303,
+                "std": 0.11438968733191816,
+                "n": 30
+              },
+              "contrarian__minimalist": {
+                "mean": 0.344877998388358,
+                "std": 0.14906466098715115,
+                "n": 30
+              },
+              "contrarian__systems_thinker": {
+                "mean": 0.27902717092925616,
+                "std": 0.12068692317532086,
+                "n": 30
+              },
+              "cross_domain_analogist__minimalist": {
+                "mean": 0.30811861953753944,
+                "std": 0.11934585347362303,
+                "n": 30
+              },
+              "systems_thinker__cross_domain_analogist": {
+                "mean": 0.26346914627720125,
+                "std": 0.07646735751826697,
+                "n": 30
+              },
+              "systems_thinker__minimalist": {
+                "mean": 0.2892626329859508,
+                "std": 0.11425438492654648,
+                "n": 30
+              }
+            },
+            "definition": "Mean SBERT cosine distance between persona outputs for the same prompt."
+          },
+          "same_prompt_intra_persona": {
+            "summary": {
+              "mean": null,
+              "std": null,
+              "n": 0
+            },
+            "per_persona": {},
+            "per_prompt_persona": {},
+            "available": false,
+            "definition": "Mean SBERT cosine distance among repeated samples for the same prompt and persona."
+          },
+          "cross_prompt_persona_dispersion": {
+            "summary": {
+              "mean": 0.8308452218770981,
+              "std": 0.013731577179444369,
+              "n": 4
+            },
+            "per_persona": {
+              "contrarian": 0.8192054629325867,
+              "systems_thinker": 0.8237142562866211,
+              "cross_domain_analogist": 0.8503093719482422,
+              "minimalist": 0.8301517963409424
+            },
+            "caveat": "Prompt-confounded: outputs differ by prompt as well as persona.",
+            "definition": "Mean SBERT cosine distance among one persona's outputs across prompts."
+          },
+          "persona_over_base_sampling": {
+            "ratio": {
+              "mean": 0.908963796754156,
+              "std": 0.0,
+              "n": 30
+            },
+            "paired_ratio": {
+              "mean": 1.0288741797376606,
+              "std": 0.3943798140254567,
+              "n": 30
+            },
+            "difference": {
+              "mean": -0.02958155773549258,
+              "std": 0.14722761112200225,
+              "n": 30
+            },
+            "n_matched_prompts": 30,
+            "definition": "Ratio of mean inter-persona distance to mean base same-prompt random-sample distance over matched prompts. paired_ratio stores the mean of per-prompt ratios."
+          },
+          "persona_silhouette": {
+            "summary": {
+              "mean": -0.02483562380026392,
+              "std": 0.018804377290067176,
+              "n": 120
+            },
+            "per_label": {
+              "contrarian": {
+                "mean": -0.014914109739739122,
+                "std": 0.016155712867897513,
+                "n": 30
+              },
+              "systems_thinker": {
+                "mean": -0.024619386359740633,
+                "std": 0.011642667964250246,
+                "n": 30
+              },
+              "cross_domain_analogist": {
+                "mean": -0.04166834363709075,
+                "std": 0.01654380493437193,
+                "n": 30
+              },
+              "minimalist": {
+                "mean": -0.01814065546448517,
+                "std": 0.01842237098152611,
+                "n": 30
+              }
+            },
+            "definition": "Cosine-distance silhouette by persona label across all prompts; positive means persona clustering."
+          }
+        },
+        "mop_divpo_v2": {
+          "prompt_controlled_inter_persona": {
+            "summary": {
+              "mean": 0.30983838237711364,
+              "std": 0.09810159445852606,
+              "n": 30
+            },
+            "per_prompt": {
+              "What is the future of remote work?": 0.4103949009861088,
+              "How should cities adapt to climate change?": 0.271384806947516,
+              "What's wrong with current education systems?": 0.3217611275661927,
+              "Why do startups fail in the first three years?": 0.22056105588774955,
+              "How can governments handle aging populations?": 0.2415556097561261,
+              "What makes a city worth living in?": 0.21827033118062078,
+              "Why are mental health rates worsening globally?": 0.31368400909308497,
+              "What's the right way to evaluate AI safety?": 0.4203252576859056,
+              "How should universities change in the next decade?": 0.4083946604649833,
+              "Why is public transit underfunded?": 0.2977940168417714,
+              "What does meaningful work look like in 2035?": 0.2575335137736034,
+              "Why is housing unaffordable in major cities?": 0.2836811684046292,
+              "How should social media platforms be regulated?": 0.27532701534314463,
+              "Why do diets fail for most people?": 0.31111670956708065,
+              "What is the role of religion in modern society?": 0.1855133681794645,
+              "How do we fix scientific peer review?": 0.30515384407036206,
+              "Why is creative writing declining in schools?": 0.24799204146371934,
+              "What's wrong with how we measure economic growth?": 0.32723075311059924,
+              "How should we think about generational wealth?": 0.31418151749303735,
+              "Why is loneliness rising in connected societies?": 0.1986344932956746,
+              "CMV: Standardized testing should be abolished entirely.": 0.5730981539839782,
+              "CMV: Working from home makes employees less productive.": 0.244206169915652,
+              "CMV: Social media has done more harm than good for society.": 0.48225857928479,
+              "CMV: Universal basic income would discourage people from working.": 0.24974478135097303,
+              "CMV: Nuclear energy is the only realistic path to decarbonization.": 0.2732133578359236,
+              "CMV: College degrees are no longer worth the cost for most people.": 0.24052593362919547,
+              "CMV: Voting should be mandatory for all eligible citizens.": 0.2917566045425994,
+              "CMV: Cancel culture has gone too far and chills free expression.": 0.5624448476423619,
+              "CMV: Self-driving cars will never be safe enough to fully trust.": 0.3362054299060577,
+              "CMV: Tipping culture should be replaced with higher fixed wages.": 0.21120741211050353
+            },
+            "per_pair": {
+              "contrarian__cross_domain_analogist": {
+                "mean": 0.29120830011782656,
+                "std": 0.1419856634577093,
+                "n": 30
+              },
+              "contrarian__minimalist": {
+                "mean": 0.2834018382315897,
+                "std": 0.08864625520781814,
+                "n": 30
+              },
+              "contrarian__systems_thinker": {
+                "mean": 0.3095853928809335,
+                "std": 0.16854644546432435,
+                "n": 30
+              },
+              "cross_domain_analogist__minimalist": {
+                "mean": 0.3184786630828373,
+                "std": 0.11124790688223508,
+                "n": 30
+              },
+              "systems_thinker__cross_domain_analogist": {
+                "mean": 0.3310942723370955,
+                "std": 0.15893250646279647,
+                "n": 30
+              },
+              "systems_thinker__minimalist": {
+                "mean": 0.3252618276123993,
+                "std": 0.13932322177241624,
+                "n": 30
+              }
+            },
+            "definition": "Mean SBERT cosine distance between persona outputs for the same prompt."
+          },
+          "same_prompt_intra_persona": {
+            "summary": {
+              "mean": null,
+              "std": null,
+              "n": 0
+            },
+            "per_persona": {},
+            "per_prompt_persona": {},
+            "available": false,
+            "definition": "Mean SBERT cosine distance among repeated samples for the same prompt and persona."
+          },
+          "cross_prompt_persona_dispersion": {
+            "summary": {
+              "mean": 0.8323694467544556,
+              "std": 0.010313925300839407,
+              "n": 4
+            },
+            "per_persona": {
+              "contrarian": 0.8200809955596924,
+              "systems_thinker": 0.8393256664276123,
+              "cross_domain_analogist": 0.8422991633415222,
+              "minimalist": 0.8277719616889954
+            },
+            "caveat": "Prompt-confounded: outputs differ by prompt as well as persona.",
+            "definition": "Mean SBERT cosine distance among one persona's outputs across prompts."
+          },
+          "persona_over_base_sampling": {
+            "ratio": {
+              "mean": 0.9535167215891337,
+              "std": 0.0,
+              "n": 30
+            },
+            "paired_ratio": {
+              "mean": 1.1151397273276098,
+              "std": 0.48864987013792627,
+              "n": 30
+            },
+            "difference": {
+              "mean": -0.015104406104598705,
+              "std": 0.17656123196370588,
+              "n": 30
+            },
+            "n_matched_prompts": 30,
+            "definition": "Ratio of mean inter-persona distance to mean base same-prompt random-sample distance over matched prompts. paired_ratio stores the mean of per-prompt ratios."
+          },
+          "persona_silhouette": {
+            "summary": {
+              "mean": -0.02497451929230429,
+              "std": 0.019494313180556017,
+              "n": 120
+            },
+            "per_label": {
+              "contrarian": {
+                "mean": -0.018162725740724615,
+                "std": 0.018422981641972053,
+                "n": 30
+              },
+              "systems_thinker": {
+                "mean": -0.02801632553783036,
+                "std": 0.019419067959851558,
+                "n": 30
+              },
+              "cross_domain_analogist": {
+                "mean": -0.033659533761010656,
+                "std": 0.02166465180216998,
+                "n": 30
+              },
+              "minimalist": {
+                "mean": -0.020059492129651534,
+                "std": 0.014593473552952207,
+                "n": 30
+              }
+            },
+            "definition": "Cosine-distance silhouette by persona label across all prompts; positive means persona clustering."
+          }
+        }
+      },
+      "global_caveat": "True same-prompt intra-persona diversity requires multiple generations for each (prompt, persona). Existing persona-method files contain one generation per (prompt, persona), so intra-persona same-prompt metrics are unavailable there."
+    },
+    {
+      "run_label": "qwen25_1p5b",
+      "n_records": 480,
+      "methods": [
+        "base",
+        "prompt_only",
+        "mop_sft",
+        "mop_divpo_v2"
+      ],
+      "metrics": {
+        "base": {
+          "prompt_controlled_inter_persona": {
+            "summary": {
+              "mean": null,
+              "std": null,
+              "n": 0
+            },
+            "per_prompt": {},
+            "per_pair": {},
+            "definition": "Mean SBERT cosine distance between persona outputs for the same prompt."
+          },
+          "same_prompt_intra_persona": {
+            "summary": {
+              "mean": 0.2278897151350975,
+              "std": 0.060904926325569285,
+              "n": 30
+            },
+            "per_persona": {
+              "none": {
+                "mean": 0.2278897151350975,
+                "std": 0.060904926325569285,
+                "n": 30
+              }
+            },
+            "per_prompt_persona": {
+              "What is the future of remote work?::none": 0.2777329981327057,
+              "How should cities adapt to climate change?::none": 0.21613667905330658,
+              "What's wrong with current education systems?::none": 0.4518434703350067,
+              "Why do startups fail in the first three years?::none": 0.2207491397857666,
+              "How can governments handle aging populations?::none": 0.2524483799934387,
+              "What makes a city worth living in?::none": 0.16581286489963531,
+              "Why are mental health rates worsening globally?::none": 0.2726975381374359,
+              "What's the right way to evaluate AI safety?::none": 0.2057526558637619,
+              "How should universities change in the next decade?::none": 0.2618744671344757,
+              "Why is public transit underfunded?::none": 0.17538368701934814,
+              "What does meaningful work look like in 2035?::none": 0.26184019446372986,
+              "Why is housing unaffordable in major cities?::none": 0.2167949676513672,
+              "How should social media platforms be regulated?::none": 0.20079796016216278,
+              "Why do diets fail for most people?::none": 0.1787245124578476,
+              "What is the role of religion in modern society?::none": 0.23048214614391327,
+              "How do we fix scientific peer review?::none": 0.2826678454875946,
+              "Why is creative writing declining in schools?::none": 0.20822961628437042,
+              "What's wrong with how we measure economic growth?::none": 0.2447582334280014,
+              "How should we think about generational wealth?::none": 0.19547773897647858,
+              "Why is loneliness rising in connected societies?::none": 0.16230829060077667,
+              "CMV: Standardized testing should be abolished entirely.::none": 0.16406168043613434,
+              "CMV: Working from home makes employees less productive.::none": 0.13551801443099976,
+              "CMV: Social media has done more harm than good for society.::none": 0.2857872247695923,
+              "CMV: Universal basic income would discourage people from working.::none": 0.2249014973640442,
+              "CMV: Nuclear energy is the only realistic path to decarbonization.::none": 0.28430625796318054,
+              "CMV: College degrees are no longer worth the cost for most people.::none": 0.20327000319957733,
+              "CMV: Voting should be mandatory for all eligible citizens.::none": 0.1673315167427063,
+              "CMV: Cancel culture has gone too far and chills free expression.::none": 0.2127862572669983,
+              "CMV: Self-driving cars will never be safe enough to fully trust.::none": 0.295380175113678,
+              "CMV: Tipping culture should be replaced with higher fixed wages.::none": 0.18083544075489044
+            },
+            "available": true,
+            "definition": "Mean SBERT cosine distance among repeated samples for the same prompt and persona."
+          },
+          "cross_prompt_persona_dispersion": {
+            "summary": {
+              "mean": null,
+              "std": null,
+              "n": 0
+            },
+            "per_persona": {},
+            "caveat": "Prompt-confounded: outputs differ by prompt as well as persona.",
+            "definition": "Mean SBERT cosine distance among one persona's outputs across prompts."
+          },
+          "persona_over_base_sampling": {
+            "ratio": {
+              "mean": null,
+              "std": null,
+              "n": 0
+            },
+            "paired_ratio": {
+              "mean": null,
+              "std": null,
+              "n": 0
+            },
+            "difference": {
+              "mean": null,
+              "std": null,
+              "n": 0
+            },
+            "n_matched_prompts": 0,
+            "definition": "Ratio of mean inter-persona distance to mean base same-prompt random-sample distance over matched prompts. paired_ratio stores the mean of per-prompt ratios."
+          },
+          "persona_silhouette": {
+            "summary": {
+              "mean": null,
+              "std": null,
+              "n": 0
+            },
+            "per_label": {},
+            "definition": "Cosine-distance silhouette by persona label across all prompts; positive means persona clustering."
+          }
+        },
+        "prompt_only": {
+          "prompt_controlled_inter_persona": {
+            "summary": {
+              "mean": 0.2896190713675756,
+              "std": 0.08179197592543885,
+              "n": 30
+            },
+            "per_prompt": {
+              "What is the future of remote work?": 0.29349398681557975,
+              "How should cities adapt to climate change?": 0.2867375223772866,
+              "What's wrong with current education systems?": 0.4527235986665114,
+              "Why do startups fail in the first three years?": 0.2873050717082516,
+              "How can governments handle aging populations?": 0.3214858704697235,
+              "What makes a city worth living in?": 0.4111472280400506,
+              "Why are mental health rates worsening globally?": 0.4259170838018314,
+              "What's the right way to evaluate AI safety?": 0.2932252479356279,
+              "How should universities change in the next decade?": 0.44498406663419615,
+              "Why is public transit underfunded?": 0.2330471089267984,
+              "What does meaningful work look like in 2035?": 0.29893667380268835,
+              "Why is housing unaffordable in major cities?": 0.3781849361630873,
+              "How should social media platforms be regulated?": 0.26774004408669755,
+              "Why do diets fail for most people?": 0.37480515834377504,
+              "What is the role of religion in modern society?": 0.28653083310864524,
+              "How do we fix scientific peer review?": 0.22353164109935406,
+              "Why is creative writing declining in schools?": 0.3403883608709836,
+              "What's wrong with how we measure economic growth?": 0.3865125019570445,
+              "How should we think about generational wealth?": 0.19892840828363387,
+              "Why is loneliness rising in connected societies?": 0.2585643272587411,
+              "CMV: Standardized testing should be abolished entirely.": 0.2387715683600737,
+              "CMV: Working from home makes employees less productive.": 0.15057627099410914,
+              "CMV: Social media has done more harm than good for society.": 0.27804480954359984,
+              "CMV: Universal basic income would discourage people from working.": 0.19097688918981112,
+              "CMV: Nuclear energy is the only realistic path to decarbonization.": 0.2474518642924134,
+              "CMV: College degrees are no longer worth the cost for most people.": 0.23120760184146605,
+              "CMV: Voting should be mandatory for all eligible citizens.": 0.2527945819375559,
+              "CMV: Cancel culture has gone too far and chills free expression.": 0.21259727599793407,
+              "CMV: Self-driving cars will never be safe enough to fully trust.": 0.2735729669527929,
+              "CMV: Tipping culture should be replaced with higher fixed wages.": 0.14838864156700113
+            },
+            "per_pair": {
+              "contrarian__cross_domain_analogist": {
+                "mean": 0.2986131144864507,
+                "std": 0.09236432191883413,
+                "n": 30
+              },
+              "contrarian__minimalist": {
+                "mean": 0.2973621626693589,
+                "std": 0.116874001380447,
+                "n": 30
+              },
+              "contrarian__systems_thinker": {
+                "mean": 0.23667066328288566,
+                "std": 0.06807428743802982,
+                "n": 30
+              },
+              "cross_domain_analogist__minimalist": {
+                "mean": 0.31875435371256855,
+                "std": 0.12134523880924028,
+                "n": 30
+              },
+              "systems_thinker__cross_domain_analogist": {
+                "mean": 0.29420650845764856,
+                "std": 0.11510284394440048,
+                "n": 30
+              },
+              "systems_thinker__minimalist": {
+                "mean": 0.2921076255965406,
+                "std": 0.10539618766691446,
+                "n": 30
+              }
+            },
+            "definition": "Mean SBERT cosine distance between persona outputs for the same prompt."
+          },
+          "same_prompt_intra_persona": {
+            "summary": {
+              "mean": null,
+              "std": null,
+              "n": 0
+            },
+            "per_persona": {},
+            "per_prompt_persona": {},
+            "available": false,
+            "definition": "Mean SBERT cosine distance among repeated samples for the same prompt and persona."
+          },
+          "cross_prompt_persona_dispersion": {
+            "summary": {
+              "mean": 0.8203498721122742,
+              "std": 0.021734958933270328,
+              "n": 4
+            },
+            "per_persona": {
+              "contrarian": 0.8036133646965027,
+              "systems_thinker": 0.8006734848022461,
+              "cross_domain_analogist": 0.8319606781005859,
+              "minimalist": 0.845151960849762
+            },
+            "caveat": "Prompt-confounded: outputs differ by prompt as well as persona.",
+            "definition": "Mean SBERT cosine distance among one persona's outputs across prompts."
+          },
+          "persona_over_base_sampling": {
+            "ratio": {
+              "mean": 1.2708738136597508,
+              "std": 0.0,
+              "n": 30
+            },
+            "paired_ratio": {
+              "mean": 1.3094332020175405,
+              "std": 0.3870926398409969,
+              "n": 30
+            },
+            "difference": {
+              "mean": 0.06172935623247799,
+              "std": 0.07658729335785924,
+              "n": 30
+            },
+            "n_matched_prompts": 30,
+            "definition": "Ratio of mean inter-persona distance to mean base same-prompt random-sample distance over matched prompts. paired_ratio stores the mean of per-prompt ratios."
+          },
+          "persona_silhouette": {
+            "summary": {
+              "mean": -0.02985159262540279,
+              "std": 0.019326684822311258,
+              "n": 120
+            },
+            "per_label": {
+              "contrarian": {
+                "mean": -0.02325775657588163,
+                "std": 0.01616605767304498,
+                "n": 30
+              },
+              "systems_thinker": {
+                "mean": -0.019513373101520032,
+                "std": 0.01683734556758401,
+                "n": 30
+              },
+              "cross_domain_analogist": {
+                "mean": -0.04039921381829717,
+                "std": 0.018798443923723852,
+                "n": 30
+              },
+              "minimalist": {
+                "mean": -0.03623602700591232,
+                "std": 0.017936181069894055,
+                "n": 30
+              }
+            },
+            "definition": "Cosine-distance silhouette by persona label across all prompts; positive means persona clustering."
+          }
+        },
+        "mop_sft": {
+          "prompt_controlled_inter_persona": {
+            "summary": {
+              "mean": 0.48884848864699304,
+              "std": 0.08633308274736808,
+              "n": 30
+            },
+            "per_prompt": {
+              "What is the future of remote work?": 0.473422947144819,
+              "How should cities adapt to climate change?": 0.4310932524003654,
+              "What's wrong with current education systems?": 0.5183690939142745,
+              "Why do startups fail in the first three years?": 0.5470180681053696,
+              "How can governments handle aging populations?": 0.6190252160729935,
+              "What makes a city worth living in?": 0.5074239548540805,
+              "Why are mental health rates worsening globally?": 0.6173622072894744,
+              "What's the right way to evaluate AI safety?": 0.4188482307158537,
+              "How should universities change in the next decade?": 0.757106034374322,
+              "Why is public transit underfunded?": 0.48359581620625125,
+              "What does meaningful work look like in 2035?": 0.4697688457916587,
+              "Why is housing unaffordable in major cities?": 0.5998581056159975,
+              "How should social media platforms be regulated?": 0.3526506058866792,
+              "Why do diets fail for most people?": 0.503137598184356,
+              "What is the role of religion in modern society?": 0.3961397951135745,
+              "How do we fix scientific peer review?": 0.44424308145860714,
+              "Why is creative writing declining in schools?": 0.5630068039495386,
+              "What's wrong with how we measure economic growth?": 0.48578843356358403,
+              "How should we think about generational wealth?": 0.41099148400293145,
+              "Why is loneliness rising in connected societies?": 0.5274632934875476,
+              "CMV: Standardized testing should be abolished entirely.": 0.5125865183631696,
+              "CMV: Working from home makes employees less productive.": 0.5030551594206281,
+              "CMV: Social media has done more harm than good for society.": 0.4481197726218835,
+              "CMV: Universal basic income would discourage people from working.": 0.4779166713242044,
+              "CMV: Nuclear energy is the only realistic path to decarbonization.": 0.41509552449417547,
+              "CMV: College degrees are no longer worth the cost for most people.": 0.4656356877146925,
+              "CMV: Voting should be mandatory for all eligible citizens.": 0.4955810467932135,
+              "CMV: Cancel culture has gone too far and chills free expression.": 0.4350256857388503,
+              "CMV: Self-driving cars will never be safe enough to fully trust.": 0.47281854413341096,
+              "CMV: Tipping culture should be replaced with higher fixed wages.": 0.31330718067328195
+            },
+            "per_pair": {
+              "contrarian__cross_domain_analogist": {
+                "mean": 0.46599574056575416,
+                "std": 0.1536480579432633,
+                "n": 30
+              },
+              "contrarian__minimalist": {
+                "mean": 0.5276187833911193,
+                "std": 0.13735361760527492,
+                "n": 30
+              },
+              "contrarian__systems_thinker": {
+                "mean": 0.4905200225493746,
+                "std": 0.13089798704704875,
+                "n": 30
+              },
+              "cross_domain_analogist__minimalist": {
+                "mean": 0.4599507882594638,
+                "std": 0.12011933845013185,
+                "n": 30
+              },
+              "systems_thinker__cross_domain_analogist": {
+                "mean": 0.4725748954946478,
+                "std": 0.14246561667710986,
+                "n": 30
+              },
+              "systems_thinker__minimalist": {
+                "mean": 0.5164307016215983,
+                "std": 0.15381070474596104,
+                "n": 30
+              }
+            },
+            "definition": "Mean SBERT cosine distance between persona outputs for the same prompt."
+          },
+          "same_prompt_intra_persona": {
+            "summary": {
+              "mean": null,
+              "std": null,
+              "n": 0
+            },
+            "per_persona": {},
+            "per_prompt_persona": {},
+            "available": false,
+            "definition": "Mean SBERT cosine distance among repeated samples for the same prompt and persona."
+          },
+          "cross_prompt_persona_dispersion": {
+            "summary": {
+              "mean": 0.8746159076690674,
+              "std": 0.005566424616197207,
+              "n": 4
+            },
+            "per_persona": {
+              "contrarian": 0.8732817769050598,
+              "systems_thinker": 0.8678934574127197,
+              "cross_domain_analogist": 0.8812451362609863,
+              "minimalist": 0.8760432600975037
+            },
+            "caveat": "Prompt-confounded: outputs differ by prompt as well as persona.",
+            "definition": "Mean SBERT cosine distance among one persona's outputs across prompts."
+          },
+          "persona_over_base_sampling": {
+            "ratio": {
+              "mean": 2.1451099201962407,
+              "std": 0.0,
+              "n": 30
+            },
+            "paired_ratio": {
+              "mean": 2.26226436927107,
+              "std": 0.6259639056095027,
+              "n": 30
+            },
+            "difference": {
+              "mean": 0.2609587735118954,
+              "std": 0.09870327126863078,
+              "n": 30
+            },
+            "n_matched_prompts": 30,
+            "definition": "Ratio of mean inter-persona distance to mean base same-prompt random-sample distance over matched prompts. paired_ratio stores the mean of per-prompt ratios."
+          },
+          "persona_silhouette": {
+            "summary": {
+              "mean": -0.008410435192556158,
+              "std": 0.020771552926631794,
+              "n": 120
+            },
+            "per_label": {
+              "contrarian": {
+                "mean": -0.014438351291562573,
+                "std": 0.020080000796501983,
+                "n": 30
+              },
+              "systems_thinker": {
+                "mean": -0.002378743120885172,
+                "std": 0.01990387957748015,
+                "n": 30
+              },
+              "cross_domain_analogist": {
+                "mean": -0.014831561886441821,
+                "std": 0.021573726923752916,
+                "n": 30
+              },
+              "minimalist": {
+                "mean": -0.0019930844713350656,
+                "std": 0.018579207719760692,
+                "n": 30
+              }
+            },
+            "definition": "Cosine-distance silhouette by persona label across all prompts; positive means persona clustering."
+          }
+        },
+        "mop_divpo_v2": {
+          "prompt_controlled_inter_persona": {
+            "summary": {
+              "mean": 0.2934683931211997,
+              "std": 0.06096953722580293,
+              "n": 30
+            },
+            "per_prompt": {
+              "What is the future of remote work?": 0.3585072932039714,
+              "How should cities adapt to climate change?": 0.3468390529579581,
+              "What's wrong with current education systems?": 0.3411702260686777,
+              "Why do startups fail in the first three years?": 0.28944136534092435,
+              "How can governments handle aging populations?": 0.33686305768136,
+              "What makes a city worth living in?": 0.34321092192842345,
+              "Why are mental health rates worsening globally?": 0.4084454636611752,
+              "What's the right way to evaluate AI safety?": 0.2794498789696353,
+              "How should universities change in the next decade?": 0.4801803374857286,
+              "Why is public transit underfunded?": 0.2143339483923974,
+              "What does meaningful work look like in 2035?": 0.26564523450989147,
+              "Why is housing unaffordable in major cities?": 0.26191357465339743,
+              "How should social media platforms be regulated?": 0.30322552173321193,
+              "Why do diets fail for most people?": 0.30238034131135416,
+              "What is the role of religion in modern society?": 0.22814178577257915,
+              "How do we fix scientific peer review?": 0.2984672891935372,
+              "Why is creative writing declining in schools?": 0.3078919956879834,
+              "What's wrong with how we measure economic growth?": 0.3000103940768375,
+              "How should we think about generational wealth?": 0.2588794039900804,
+              "Why is loneliness rising in connected societies?": 0.25340005589277875,
+              "CMV: Standardized testing should be abolished entirely.": 0.3540943569123207,
+              "CMV: Working from home makes employees less productive.": 0.23255691109684076,
+              "CMV: Social media has done more harm than good for society.": 0.26677551628192253,
+              "CMV: Universal basic income would discourage people from working.": 0.19518179187622012,
+              "CMV: Nuclear energy is the only realistic path to decarbonization.": 0.29705580308753526,
+              "CMV: College degrees are no longer worth the cost for most people.": 0.2379304897558062,
+              "CMV: Voting should be mandatory for all eligible citizens.": 0.2938208198207861,
+              "CMV: Cancel culture has gone too far and chills free expression.": 0.2706381575842014,
+              "CMV: Self-driving cars will never be safe enough to fully trust.": 0.276811952999421,
+              "CMV: Tipping culture should be replaced with higher fixed wages.": 0.20078885170903474
+            },
+            "per_pair": {
+              "contrarian__cross_domain_analogist": {
+                "mean": 0.3029594439992255,
+                "std": 0.09366287493565495,
+                "n": 30
+              },
+              "contrarian__minimalist": {
+                "mean": 0.3028525977544195,
+                "std": 0.09772559805735531,
+                "n": 30
+              },
+              "contrarian__systems_thinker": {
+                "mean": 0.26558770581263674,
+                "std": 0.092370904771329,
+                "n": 30
+              },
+              "cross_domain_analogist__minimalist": {
+                "mean": 0.3113822717118765,
+                "std": 0.11839778758407316,
+                "n": 30
+              },
+              "systems_thinker__cross_domain_analogist": {
+                "mean": 0.2903669430778243,
+                "std": 0.09484792708199657,
+                "n": 30
+              },
+              "systems_thinker__minimalist": {
+                "mean": 0.2876613963712157,
+                "std": 0.07585967288605441,
+                "n": 30
+              }
+            },
+            "definition": "Mean SBERT cosine distance between persona outputs for the same prompt."
+          },
+          "same_prompt_intra_persona": {
+            "summary": {
+              "mean": null,
+              "std": null,
+              "n": 0
+            },
+            "per_persona": {},
+            "per_prompt_persona": {},
+            "available": false,
+            "definition": "Mean SBERT cosine distance among repeated samples for the same prompt and persona."
+          },
+          "cross_prompt_persona_dispersion": {
+            "summary": {
+              "mean": 0.8184463381767273,
+              "std": 0.022543439048842047,
+              "n": 4
+            },
+            "per_persona": {
+              "contrarian": 0.805209755897522,
+              "systems_thinker": 0.8029082417488098,
+              "cross_domain_analogist": 0.8142058849334717,
+              "minimalist": 0.8514614701271057
+            },
+            "caveat": "Prompt-confounded: outputs differ by prompt as well as persona.",
+            "definition": "Mean SBERT cosine distance among one persona's outputs across prompts."
+          },
+          "persona_over_base_sampling": {
+            "ratio": {
+              "mean": 1.2877649741552657,
+              "std": 0.0,
+              "n": 30
+            },
+            "paired_ratio": {
+              "mean": 1.3434788994927607,
+              "std": 0.34736677365108243,
+              "n": 30
+            },
+            "difference": {
+              "mean": 0.06557867798610222,
+              "std": 0.07066295516625909,
+              "n": 30
+            },
+            "n_matched_prompts": 30,
+            "definition": "Ratio of mean inter-persona distance to mean base same-prompt random-sample distance over matched prompts. paired_ratio stores the mean of per-prompt ratios."
+          },
+          "persona_silhouette": {
+            "summary": {
+              "mean": -0.029671015130344276,
+              "std": 0.01560635125173324,
+              "n": 120
+            },
+            "per_label": {
+              "contrarian": {
+                "mean": -0.02696982982206703,
+                "std": 0.011125675447749353,
+                "n": 30
+              },
+              "systems_thinker": {
+                "mean": -0.023584837089944206,
+                "std": 0.012976113547938718,
+                "n": 30
+              },
+              "cross_domain_analogist": {
+                "mean": -0.02972459345789412,
+                "std": 0.016039983742907445,
+                "n": 30
+              },
+              "minimalist": {
+                "mean": -0.038404800151471755,
+                "std": 0.018033526459497736,
+                "n": 30
+              }
+            },
+            "definition": "Cosine-distance silhouette by persona label across all prompts; positive means persona clustering."
+          }
+        }
+      },
+      "global_caveat": "True same-prompt intra-persona diversity requires multiple generations for each (prompt, persona). Existing persona-method files contain one generation per (prompt, persona), so intra-persona same-prompt metrics are unavailable there."
+    }
+  ]
+}

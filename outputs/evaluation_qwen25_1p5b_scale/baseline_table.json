@@ -1,0 +1,205 @@
+{
+  "summary": {
+    "base": {
+      "self_bleu": {
+        "mean": 0.09925590534786702,
+        "std": 0.02839153973830187,
+        "n": 30
+      },
+      "distinct_1": {
+        "mean": 0.4861307338793249,
+        "std": 0.020127169261517558,
+        "n": 30
+      },
+      "distinct_2": {
+        "mean": 0.889432353274965,
+        "std": 0.02155560880141662,
+        "n": 30
+      },
+      "sbert_cosine": {
+        "mean": 0.7721103727817535,
+        "std": 0.060904889391159046,
+        "n": 30
+      }
+    },
+    "prompt_only": {
+      "self_bleu": {
+        "mean": 0.04095220392646359,
+        "std": 0.016772693017621992,
+        "n": 30
+      },
+      "distinct_1": {
+        "mean": 0.5747212935756882,
+        "std": 0.03370265332665038,
+        "n": 30
+      },
+      "distinct_2": {
+        "mean": 0.9347284764525543,
+        "std": 0.01572739103417761,
+        "n": 30
+      },
+      "sbert_cosine": {
+        "mean": 0.7103810171286266,
+        "std": 0.08179196664784522,
+        "n": 30
+      }
+    },
+    "mop_sft": {
+      "self_bleu": {
+        "mean": 0.022280639084435807,
+        "std": 0.009211831426506854,
+        "n": 30
+      },
+      "distinct_1": {
+        "mean": 0.5773515558505541,
+        "std": 0.044202492904228737,
+        "n": 30
+      },
+      "distinct_2": {
+        "mean": 0.9527128163581583,
+        "std": 0.018840531291215778,
+        "n": 30
+      },
+      "sbert_cosine": {
+        "mean": 0.5111515685915947,
+        "std": 0.08633306913286116,
+        "n": 30
+      }
+    },
+    "mop_divpo_v2": {
+      "self_bleu": {
+        "mean": 0.048322944389026797,
+        "std": 0.017794573142140703,
+        "n": 30
+      },
+      "distinct_1": {
+        "mean": 0.5611977136732756,
+        "std": 0.02760718366297307,
+        "n": 30
+      },
+      "distinct_2": {
+        "mean": 0.9299438248897548,
+        "std": 0.012422666317982821,
+        "n": 30
+      },
+      "sbert_cosine": {
+        "mean": 0.7065316915512085,
+        "std": 0.06096954194238541,
+        "n": 30
+      }
+    }
+  },
+  "significance": {
+    "base": {
+      "self_bleu": {
+        "mean_diff": 0.050932960958840236,
+        "p_value": 0.0,
+        "effect_size": 1.7615692993428493,
+        "n": 30
+      },
+      "distinct_1": {
+        "mean_diff": 0.0750669797939508,
+        "p_value": 0.0,
+        "effect_size": 2.344219243109406,
+        "n": 30
+      },
+      "distinct_2": {
+        "mean_diff": 0.04051147161479,
+        "p_value": 0.0,
+        "effect_size": 1.7024452985539273,
+        "n": 30
+      },
+      "sbert_cosine": {
+        "mean_diff": 0.06557868123054504,
+        "p_value": 0.0,
+        "effect_size": 0.9280488627159472,
+        "n": 30
+      }
+    },
+    "prompt_only": {
+      "self_bleu": {
+        "mean_diff": -0.0073707404625631915,
+        "p_value": 0.992,
+        "effect_size": -0.39991903976104964,
+        "n": 30
+      },
+      "distinct_1": {
+        "mean_diff": -0.01352357990241259,
+        "p_value": 0.987,
+        "effect_size": -0.398116294425817,
+        "n": 30
+      },
+      "distinct_2": {
+        "mean_diff": -0.0047846515627993835,
+        "p_value": 0.9319999999999999,
+        "effect_size": -0.2501778072495121,
+        "n": 30
+      },
+      "sbert_cosine": {
+        "mean_diff": 0.0038493255774180095,
+        "p_value": 0.33499999999999996,
+        "effect_size": 0.06569184124298669,
+        "n": 30
+      }
+    },
+    "mop_sft": {
+      "self_bleu": {
+        "mean_diff": -0.02604230530459099,
+        "p_value": 1.0,
+        "effect_size": -1.5880537907003047,
+        "n": 30
+      },
+      "distinct_1": {
+        "mean_diff": -0.016153842177278322,
+        "p_value": 0.978,
+        "effect_size": -0.3752619218493439,
+        "n": 30
+      },
+      "distinct_2": {
+        "mean_diff": -0.022768991468403266,
+        "p_value": 1.0,
+        "effect_size": -1.194706478628214,
+        "n": 30
+      },
+      "sbert_cosine": {
+        "mean_diff": -0.1953801229596138,
+        "p_value": 1.0,
+        "effect_size": -2.8813417889057766,
+        "n": 30
+      }
+    }
+  },
+  "n_prompts": 30,
+  "methods": [
+    "base",
+    "prompt_only",
+    "mop_sft",
+    "mop_divpo_v2"
+  ],
+  "base_model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "adapter_prefix": "outputs/adapters",
+  "method_configs": {
+    "base": {
+      "stage": "base",
+      "use_persona_prompt": false,
+      "per_persona": false
+    },
+    "prompt_only": {
+      "stage": "base",
+      "use_persona_prompt": true,
+      "per_persona": true
+    },
+    "mop_sft": {
+      "stage": "sft_1p5b",
+      "use_persona_prompt": true,
+      "per_persona": true
+    },
+    "mop_divpo_v2": {
+      "stage": "divpo_v2_1p5b",
+      "use_persona_prompt": true,
+      "per_persona": true,
+      "sft_stage": "sft_1p5b"
+    }
+  },
+  "headline": "mop_divpo_v2"
+}

@@ -1,0 +1,5 @@
+run,method,inter_mean,inter_std,inter_n,base_ratio_mean,base_diff_mean,same_prompt_intra_mean,same_prompt_intra_n,cross_prompt_dispersion_mean,silhouette_mean,silhouette_n
+qwen25_1p5b,base,,,0,,,0.227890,30,,,0
+qwen25_1p5b,prompt_only,0.289619,0.081792,30,1.270874,0.061729,,0,0.820350,-0.029852,120
+qwen25_1p5b,mop_sft,0.488848,0.086333,30,2.145110,0.260959,,0,0.874616,-0.008410,120
+qwen25_1p5b,mop_divpo_v2,0.293468,0.060970,30,1.287765,0.065579,,0,0.818446,-0.029671,120

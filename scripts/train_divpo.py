@@ -128,17 +128,17 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
     print(f"  {len(ds)} preference pairs")
 
     # --- Tokenizer ---
-    tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, token=token)
+    tokenizer = AutoTokenizer.from_pretrained(args.base_model, token=token)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
     # --- Model: load SFT adapter from HF ---
-    sft_adapter_id = f"{MODEL_REPO}"
-    sft_subfolder = f"sft/{persona}"
+    sft_adapter_id = args.sft_adapter_dir or f"{MODEL_REPO}"
+    sft_subfolder = f"{args.sft_stage}/{persona}"
     print(f"Loading SFT adapter from {sft_adapter_id}/{sft_subfolder} ...", flush=True)
 
     base = AutoModelForCausalLM.from_pretrained(
-        BASE_MODEL,
+        args.base_model,
         dtype=torch.float16,
         attn_implementation="sdpa",
         **device_kwargs,
@@ -156,7 +156,7 @@ def train_persona(persona: str, args: argparse.Namespace, token: str) -> None:
 
     # Reference model (frozen SFT — DPO needs it for KL constraint)
     ref_base = AutoModelForCausalLM.from_pretrained(
-        BASE_MODEL,
+        args.base_model,
         dtype=torch.float16,
         attn_implementation="sdpa",
         **device_kwargs,
@@ -249,6 +249,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-length", type=int, default=384)
     parser.add_argument("--dataset-dir", default=None,
                         help="Local directory containing {persona}.jsonl DivPO files.")
+    parser.add_argument("--base-model", default=BASE_MODEL)
+    parser.add_argument("--sft-stage", default="sft",
+                        help="SFT adapter stage to load before DivPO, e.g. sft or sft_1p5b.")
+    parser.add_argument("--sft-adapter-dir", default=None,
+                        help="Optional local adapter root containing {sft_stage}/{persona}.")
     parser.add_argument("--output-stage", default="divpo",
                         help="Hub/output stage name, e.g. divpo or divpo_v2.")
     parser.add_argument("--token", default=None)

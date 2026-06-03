@@ -53,23 +53,35 @@ def configure_warning_filters() -> None:
     )
 
 
-def adapter_chain(stage: str, persona: str | None, single_name: str = "all") -> list[str]:
+def _is_custom_stage(stage: str) -> bool:
+    return stage.startswith("sft_") or stage.startswith("divpo_")
+
+
+def adapter_chain(
+    stage: str,
+    persona: str | None,
+    single_name: str = "all",
+    sft_stage: str = "sft",
+) -> list[str]:
     """Return the ordered list of repo subfolders to stack for a method.
 
     Pure function — no model loading — so it is unit-testable.
     """
-    if stage not in VALID_STAGES:
-        raise ValueError(f"Unknown stage {stage!r}. Expected one of {sorted(VALID_STAGES)}.")
+    if stage not in VALID_STAGES and not _is_custom_stage(stage):
+        raise ValueError(
+            f"Unknown stage {stage!r}. Expected one of {sorted(VALID_STAGES)} "
+            "or a custom stage starting with 'sft_' or 'divpo_'."
+        )
     if stage == "base":
         return []
     if stage == "single":
         return [f"single/{single_name}"]
     if persona is None:
         raise ValueError(f"stage={stage!r} requires a persona.")
-    if stage == "sft":
-        return [f"sft/{persona}"]
+    if stage == "sft" or stage.startswith("sft_"):
+        return [f"{stage}/{persona}"]
     # divpo variants: SFT adapter first, DivPO adapter stacked on top.
-    return [f"sft/{persona}", f"{stage}/{persona}"]
+    return [f"{sft_stage}/{persona}", f"{stage}/{persona}"]
 
 
 def build_messages(
@@ -118,15 +130,17 @@ class MoPGenerator:
         adapter_prefix: str = MODEL_REPO,
         adapter_stage: str = "sft",
         single_name: str = "all",
+        sft_stage: str = "sft",
         base_model: str = BASE_MODEL,
         token: str | None = None,
         use_persona_prompt: bool = True,
     ) -> None:
-        if adapter_stage not in VALID_STAGES:
+        if adapter_stage not in VALID_STAGES and not _is_custom_stage(adapter_stage):
             raise ValueError(f"Unknown adapter_stage {adapter_stage!r}.")
         self.adapter_prefix = adapter_prefix
         self.adapter_stage = adapter_stage
         self.single_name = single_name
+        self.sft_stage = sft_stage
         self.base_model = base_model
         self.token = token
         self.use_persona_prompt = use_persona_prompt
@@ -155,7 +169,12 @@ class MoPGenerator:
             device_map="auto",
             token=self.token,
         )
-        chain = adapter_chain(self.adapter_stage, persona, single_name=self.single_name)
+        chain = adapter_chain(
+            self.adapter_stage,
+            persona,
+            single_name=self.single_name,
+            sft_stage=self.sft_stage,
+        )
         if chain:
             from peft import PeftModel
 

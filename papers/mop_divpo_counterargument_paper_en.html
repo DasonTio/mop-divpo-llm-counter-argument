@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>mop_divpo_counterargument_paper_en</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="paper.css" />
+</head>
+<body>
+<h1
+id="mixture-of-cognitive-personas-with-diverse-preference-optimization-for-diverse-counter-argument-generation">Mixture
+of Cognitive Personas with Diverse Preference Optimization for Diverse
+Counter-Argument Generation</h1>
+<p class="paper-meta">
+Dason Tiovino<br>2026
+</p>
+<div class="abstract">
+<p><strong>Abstract.</strong> Aligned large language models are useful
+writing assistants, but their suggestions often converge toward the same
+safe and generic distribution. This work studies that problem in the
+concrete setting of counter-argument generation, where a useful
+pre-writing assistant should expose writers to alternative viewpoints
+rather than merely polish the most probable one. The proposed system
+combines a frozen Qwen2.5-0.5B-Instruct base model with four LoRA
+persona adapters: contrarian, systems thinker, cross-domain analogist,
+and minimalist. Each persona is first trained through supervised
+fine-tuning on a dataset selected for its cognitive style, then
+optimized through Diverse Preference Optimization (DivPO). The final
+evaluation compares six methods: base model, prompt-only persona
+conditioning, single LoRA, MoP-SFT, MoP+DivPO, and MoP+DivPO v2. The
+results support a more nuanced conclusion than the original proposal:
+the persona adapters are strongly distinct, with all off-diagonal SBERT
+cosine scores around 0.19-0.20, but raw adapter training can maximize
+diversity by sacrificing quality and utility. DivPO v2 gives the best
+balanced result, preserving prompt-only quality and utility while
+slightly improving novelty and lexical diversity. The paper therefore
+frames the contribution as an empirical study of the diversity-quality
+trade-off in small LLM counter-argument generation, rather than as an
+unconditional claim that DivPO wins every metric.</p>
+</div>
+<h2 id="introduction">1. Introduction</h2>
+<p>Large language models (LLMs) are increasingly used as pre-writing
+assistants. A writer can ask for possible angles, objections,
+counter-arguments, outlines, or alternative framings before committing
+to a full draft. This is a high-leverage stage of writing because early
+ideation constrains the later argument: if the first set of ideas is
+generic, the final text may remain generic even after careful drafting
+and editing.</p>
+<p>The central problem is not that current LLMs fail to produce fluent
+text. The problem is that they often produce similar ideas across users,
+prompts, and sampling attempts. Recent work describes this as a
+reduction in collective diversity: model assistance can improve
+individual fluency or perceived creativity while causing different users
+to converge toward similar outputs [1, 2]. Wu et al. define the broader
+phenomenon as generative monoculture, where a model’s output
+distribution narrows relative to the diversity available in the
+underlying task space [3]. This is especially concerning for
+pre-writing, where the user needs divergent exploration rather than
+early convergence.</p>
+<p>The original project proposal framed the system as a pre-writing
+ideation tool that combines Mixture of Persona (MoP) and Diverse
+Preference Optimization (DivPO). That framing remains a useful
+motivation, but the completed experiment has become more precise. The
+evaluated task is not a broad human writing study. It is
+counter-argument generation on CGA-CMV-derived and related prompts. This
+task is appropriate because counter-arguments are naturally measurable:
+an output can be judged for relevance, coherence, substance, novelty,
+usefulness, and persona fidelity. It also directly serves pre-writing
+because counter-arguments reveal hidden assumptions and alternative
+positions before the writer drafts.</p>
+<p>This paper therefore asks:</p>
+<ol type="1">
+<li>Can separate cognitive persona adapters produce empirically distinct
+output distributions?</li>
+<li>Does DivPO improve the diversity-quality balance relative to base,
+prompt-only, single-adapter, and MoP-SFT baselines?</li>
+<li>What should be claimed honestly when diversity metrics and judge
+quality metrics disagree?</li>
+</ol>
+<p>The answer is mixed but informative. The persona distinctness result
+is strong: all six persona pairs are below the 0.5 collapse threshold,
+and no pair approaches the 0.7 collapse threshold. The baseline
+comparison is more nuanced. Single LoRA and MoP-SFT produce the
+strongest semantic diversity and LLM-judge novelty, but their quality,
+utility, and persona fidelity are substantially lower. Prompt-only
+conditioning is strong on quality and utility. MoP+DivPO v2 gives the
+best balanced version of the proposed method: it keeps quality and
+utility near prompt-only while improving novelty and lexical diversity
+modestly. The project contribution is therefore not “DivPO dominates all
+baselines.” The more defensible contribution is: cognitive personas are
+separable at small scale, and DivPO v2 helps recover usability while
+maintaining a useful diversity signal.</p>
+<h2 id="related-work">2. Related Work</h2>
+<h3 id="llm-writing-assistance-and-diversity-loss">2.1 LLM writing
+assistance and diversity loss</h3>
+<p>Doshi and Hauser show that generative AI can improve individual
+creative output while reducing the collective diversity of produced
+content [1]. Padmakumar and He similarly study whether writing with
+language models reduces content diversity, showing that LLM-assisted
+writing can make outputs more similar across writers [2]. These results
+motivate treating diversity as a central evaluation objective rather
+than a secondary aesthetic preference.</p>
+<p>Generative monoculture gives a broader machine learning
+interpretation of the same concern [3]. If post-training alignment makes
+models concentrate probability mass around safe and preferred responses,
+repeated sampling may not be enough to recover the full diversity of
+plausible ideas. This matters for writing because the task is often not
+to find the single highest-rated continuation, but to expose a writer to
+multiple plausible framings.</p>
+<h3 id="preference-optimization-and-diversity">2.2 Preference
+optimization and diversity</h3>
+<p>Direct Preference Optimization (DPO) and related post-training
+methods optimize a model toward preferred responses. These methods
+improve instruction following and preference alignment, but they can
+also sharpen the model distribution. Kirk et al. show that RLHF-style
+post-training affects both generalization and output diversity, making
+the diversity-quality trade-off an empirical question rather than a
+theoretical assumption [4].</p>
+<p>Diverse Preference Optimization (DivPO) changes the construction of
+preference pairs: instead of always selecting the highest-quality
+candidate as preferred, it selects a rare but still acceptable candidate
+[5]. This makes DivPO attractive for ideation because novelty is not
+useful if it is incoherent, but quality is not enough if every output
+expresses the same framing.</p>
+<h3 id="lora-qlora-and-mixture-style-adaptation">2.3 LoRA, QLoRA, and
+mixture-style adaptation</h3>
+<p>LoRA freezes the base model and inserts trainable low-rank matrices,
+enabling parameter-efficient adaptation [6]. QLoRA extends efficient
+fine-tuning by combining low-bit quantization with LoRA-style adaptation
+[7]. These techniques make it feasible to train multiple small adapters
+even when full model fine-tuning is impractical.</p>
+<p>Mixture-style adaptation, including MixLoRA, uses multiple LoRA-based
+experts and routing mechanisms to specialize behavior [8]. This project
+adopts the spirit of that architecture but uses cognitive personas
+rather than task-domain experts. The point is not only computational
+efficiency; it is behavioral separation. If a single prompt-conditioned
+model averages all styles into one voice, separate adapters may preserve
+sharper modes of reasoning.</p>
+<h2 id="method">3. Method</h2>
+<h3 id="model-and-persona-architecture">3.1 Model and persona
+architecture</h3>
+<p>The base model is <code>Qwen/Qwen2.5-0.5B-Instruct</code>. The system
+keeps the base model frozen and trains four LoRA adapters, each
+representing one cognitive style:</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Persona</th>
+<th>Intended cognitive move</th>
+<th>Training source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Contrarian</td>
+<td>Challenge hidden assumptions and minority positions</td>
+<td>Conversations Gone Awry - ChangeMyView</td>
+</tr>
+<tr>
+<td>Systems thinker</td>
+<td>Map causes, constraints, feedback loops, and second-order
+effects</td>
+<td>StackExchange question-answering</td>
+</tr>
+<tr>
+<td>Cross-domain analogist</td>
+<td>Transfer mechanisms from one domain to another</td>
+<td>arXiv abstracts</td>
+</tr>
+<tr>
+<td>Minimalist</td>
+<td>Remove secondary assumptions and expose the core disagreement</td>
+<td>IBM argument quality ranking data</td>
+</tr>
+</tbody>
+</table>
+<p>This design follows a cognitive-fingerprint principle: each adapter
+should be trained on data whose natural discourse already resembles the
+target reasoning move. The contrarian persona uses CMV-style
+disagreement. The systems thinker uses explanatory Q&amp;A, where
+answers often trace constraints and causal dependencies. The analogist
+uses research abstracts, where mechanisms and abstractions can be
+transferred across domains. The minimalist uses concise argument-quality
+data, emphasizing compact critique.</p>
+<h3 id="training-stages">3.2 Training stages</h3>
+<p>The training pipeline has two stages. First, each persona receives
+supervised fine-tuning (SFT) on its persona-specific dataset. Second,
+each SFT adapter is optimized with DivPO. The original DivPO variant
+computes rarity against same-persona candidate siblings. DivPO v2
+changes pair construction by computing rarity against the full
+cross-persona candidate pool for a shared prompt set. This matters
+because the evaluation measures diversity across persona outputs;
+therefore, the v2 training signal is more aligned with the final
+cross-persona evaluation.</p>
+<p>The quality proxy also changes in v2. The first DivPO version
+included prompt-response embedding relevance. For counter-argument
+generation this can be misleading: a strong counter-argument may
+semantically oppose or reframe the claim rather than paraphrase it.
+DivPO v2 therefore drops the relevance term and uses a coherence-length
+proxy for the quality floor before selecting rare candidates.</p>
+<h3 id="compared-methods">3.3 Compared methods</h3>
+<p>The final baseline table compares six methods:</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Base</td>
+<td>Qwen2.5-0.5B-Instruct without adapter or persona prompt</td>
+</tr>
+<tr>
+<td>Prompt-only</td>
+<td>Base model with persona instructions in the system prompt</td>
+</tr>
+<tr>
+<td>Single LoRA</td>
+<td>One LoRA adapter trained on all persona data merged</td>
+</tr>
+<tr>
+<td>MoP-SFT</td>
+<td>Four separate SFT persona adapters</td>
+</tr>
+<tr>
+<td>MoP+DivPO</td>
+<td>Four persona adapters after same-persona DivPO</td>
+</tr>
+<tr>
+<td>MoP+DivPO v2</td>
+<td>Four persona adapters after cross-persona DivPO v2</td>
+</tr>
+</tbody>
+</table>
+<p>For persona methods, each prompt produces one output per persona. For
+the base method, each prompt produces four stochastic outputs without
+persona context.</p>
+<h2 id="experimental-setup">4. Experimental Setup</h2>
+<h3 id="persona-distinctness-validation">4.1 Persona distinctness
+validation</h3>
+<p>Before the baseline comparison, the experiment tests whether the four
+persona adapters produce distinct output distributions. The protocol
+uses 20 persona-neutral prompts. For each prompt and each persona, the
+model generates five outputs at temperature 0.9, giving 400 outputs in
+total. Outputs are embedded with <code>all-MiniLM-L6-v2</code>, and the
+mean cross-persona SBERT cosine is computed for each persona pair.</p>
+<p>The decision rule is:</p>
+<table>
+<thead>
+<tr>
+<th>Off-diagonal SBERT cosine</th>
+<th>Interpretation</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Below 0.5</td>
+<td>Distinct personas</td>
+<td>Keep both</td>
+</tr>
+<tr>
+<td>0.5 to 0.7</td>
+<td>Borderline distinct</td>
+<td>Keep but report limitation</td>
+</tr>
+<tr>
+<td>Above 0.7</td>
+<td>Mode-collapsed pair</td>
+<td>Drop or merge one persona</td>
+</tr>
+</tbody>
+</table>
+<h3 id="baseline-evaluation">4.2 Baseline evaluation</h3>
+<p>The baseline evaluation uses 30 prompts and six methods. Each method
+generates 120 outputs, producing 720 outputs total. Automated diversity
+metrics are computed per prompt and aggregated across prompts. The main
+automated metrics are Self-BLEU, Distinct-1, Distinct-2, and pairwise
+SBERT cosine.</p>
+<p>The project also uses LLM-as-judge scoring. Each output is scored on
+quality, novelty, pre-writing utility, and persona fidelity. Quality
+averages relevance, coherence, and substance. Novelty compares a target
+output against peer outputs for the same prompt. Utility asks whether
+the output would help a writer at the pre-writing stage. Persona
+fidelity asks whether an output expresses the requested cognitive style.
+The primary judge in the current result artifacts is OpenAI
+<code>gpt-4o-mini</code>, with <code>gpt-4o</code> used for calibration
+on a sample.</p>
+<h3 id="inter-judge-calibration">4.3 Inter-judge calibration</h3>
+<p>The calibration results show that the judge metrics should be
+interpreted carefully:</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th style="text-align: right;">Spearman rho</th>
+<th style="text-align: right;">p-value</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Quality</td>
+<td style="text-align: right;">0.6972</td>
+<td style="text-align: right;">0.0000</td>
+<td>Borderline acceptable</td>
+</tr>
+<tr>
+<td>Persona fidelity</td>
+<td style="text-align: right;">0.6200</td>
+<td style="text-align: right;">0.0003</td>
+<td>Borderline acceptable</td>
+</tr>
+<tr>
+<td>Novelty</td>
+<td style="text-align: right;">0.2659</td>
+<td style="text-align: right;">0.0678</td>
+<td>Low agreement</td>
+</tr>
+<tr>
+<td>Utility</td>
+<td style="text-align: right;">0.5546</td>
+<td style="text-align: right;">0.0000</td>
+<td>Low-to-borderline agreement</td>
+</tr>
+</tbody>
+</table>
+<p>This means the paper should not overstate fine-grained novelty
+differences from the LLM judge. Quality and fidelity are more stable
+than novelty. Novelty remains useful as a directional indicator, but it
+should be triangulated with automated diversity metrics and qualitative
+inspection.</p>
+<h2 id="results">5. Results</h2>
+<h3 id="persona-distinctness">5.1 Persona distinctness</h3>
+<p>The distinctness test strongly supports keeping all four
+personas:</p>
+<table>
+<thead>
+<tr>
+<th>Persona pair</th>
+<th style="text-align: right;">SBERT cosine</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Contrarian - Systems thinker</td>
+<td style="text-align: right;">0.2046</td>
+</tr>
+<tr>
+<td>Contrarian - Cross-domain analogist</td>
+<td style="text-align: right;">0.2030</td>
+</tr>
+<tr>
+<td>Systems thinker - Cross-domain analogist</td>
+<td style="text-align: right;">0.1973</td>
+</tr>
+<tr>
+<td>Contrarian - Minimalist</td>
+<td style="text-align: right;">0.1922</td>
+</tr>
+<tr>
+<td>Systems thinker - Minimalist</td>
+<td style="text-align: right;">0.1906</td>
+</tr>
+<tr>
+<td>Cross-domain analogist - Minimalist</td>
+<td style="text-align: right;">0.1904</td>
+</tr>
+</tbody>
+</table>
+<p>All pairs are far below the 0.5 threshold. No pair is close to the
+0.7 collapse threshold. This is the strongest architectural evidence in
+the project: separate persona adapters do not merely produce
+surface-level prompt variations; they produce measurably different
+output distributions under shared prompts.</p>
+<h3 id="baseline-table">5.2 Baseline table</h3>
+<table>
+<colgroup>
+<col style="width: 8%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+</colgroup>
+<thead>
+<tr>
+<th>Method</th>
+<th style="text-align: right;">Self-BLEU lower</th>
+<th style="text-align: right;">Dist-1 higher</th>
+<th style="text-align: right;">Dist-2 higher</th>
+<th style="text-align: right;">SBERT lower</th>
+<th style="text-align: right;">Quality higher</th>
+<th style="text-align: right;">Novelty higher</th>
+<th style="text-align: right;">Utility higher</th>
+<th style="text-align: right;">Fidelity higher</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Base</td>
+<td style="text-align: right;">0.086</td>
+<td style="text-align: right;">0.481</td>
+<td style="text-align: right;">0.894</td>
+<td style="text-align: right;">0.675</td>
+<td style="text-align: right;">3.417</td>
+<td style="text-align: right;">3.192</td>
+<td style="text-align: right;">3.058</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Prompt-only</td>
+<td style="text-align: right;">0.062</td>
+<td style="text-align: right;">0.576</td>
+<td style="text-align: right;">0.923</td>
+<td style="text-align: right;">0.708</td>
+<td style="text-align: right;">3.975</td>
+<td style="text-align: right;">3.458</td>
+<td style="text-align: right;">3.542</td>
+<td style="text-align: right;">3.042</td>
+</tr>
+<tr>
+<td>Single LoRA</td>
+<td style="text-align: right;">0.040</td>
+<td style="text-align: right;">0.597</td>
+<td style="text-align: right;">0.945</td>
+<td style="text-align: right;">0.481</td>
+<td style="text-align: right;">2.589</td>
+<td style="text-align: right;">4.650</td>
+<td style="text-align: right;">2.308</td>
+<td style="text-align: right;">1.975</td>
+</tr>
+<tr>
+<td>MoP-SFT</td>
+<td style="text-align: right;">0.026</td>
+<td style="text-align: right;">0.559</td>
+<td style="text-align: right;">0.943</td>
+<td style="text-align: right;">0.488</td>
+<td style="text-align: right;">2.633</td>
+<td style="text-align: right;">4.700</td>
+<td style="text-align: right;">2.308</td>
+<td style="text-align: right;">2.192</td>
+</tr>
+<tr>
+<td>MoP+DivPO</td>
+<td style="text-align: right;">0.056</td>
+<td style="text-align: right;">0.556</td>
+<td style="text-align: right;">0.920</td>
+<td style="text-align: right;">0.705</td>
+<td style="text-align: right;">3.931</td>
+<td style="text-align: right;">3.642</td>
+<td style="text-align: right;">3.542</td>
+<td style="text-align: right;">3.025</td>
+</tr>
+<tr>
+<td>MoP+DivPO v2</td>
+<td style="text-align: right;">0.051</td>
+<td style="text-align: right;">0.580</td>
+<td style="text-align: right;">0.931</td>
+<td style="text-align: right;">0.690</td>
+<td style="text-align: right;">3.956</td>
+<td style="text-align: right;">3.650</td>
+<td style="text-align: right;">3.550</td>
+<td style="text-align: right;">3.058</td>
+</tr>
+</tbody>
+</table>
+<p>The table shows three regimes.</p>
+<p>First, the base model is weaker than persona-conditioned methods on
+most judge metrics and lexical diversity metrics. MoP+DivPO
+significantly improves over base on Self-BLEU, Distinct-1, Distinct-2,
+quality, novelty, and utility in the stored significance table, although
+not on SBERT cosine.</p>
+<p>Second, Single LoRA and MoP-SFT achieve the strongest raw diversity.
+Their Self-BLEU and SBERT scores are much lower, and judge novelty is
+much higher. However, they pay for that diversity with low quality and
+utility. Their outputs are less useful to a writer and show weaker
+persona fidelity. This is not a small penalty; MoP-SFT has quality 2.633
+and utility 2.308, while prompt-only has quality 3.975 and utility
+3.542.</p>
+<p>Third, MoP+DivPO and MoP+DivPO v2 occupy the balanced region. They do
+not beat the SFT variants on raw semantic diversity or judged novelty,
+but they recover quality and utility. The v2 variant is the best final
+version because it improves over the first DivPO variant on Distinct-1,
+Distinct-2, SBERT cosine, quality, novelty, utility, and fidelity.
+Against prompt-only, v2 is not a statistically decisive improvement, but
+it is numerically competitive while preserving the trained persona
+architecture.</p>
+<h3 id="main-empirical-findings">5.3 Main empirical findings</h3>
+<p><strong>Finding 1: Persona separation works.</strong> The
+distinctness matrix validates the MoP architectural premise. All four
+adapters remain distinct under the same prompts, so the system can
+legitimately claim inter-persona diversity.</p>
+<p><strong>Finding 2: Diversity can be purchased too cheaply.</strong>
+Single LoRA and MoP-SFT look excellent on diversity metrics but poor on
+quality and utility. This suggests that diversity alone is not enough
+for pre-writing assistance. A system that generates unusual but weak
+arguments is not useful.</p>
+<p><strong>Finding 3: DivPO v2 is a balance mechanism, not a universal
+winner.</strong> DivPO v2 does not dominate every metric. Its value is
+that it moves the model away from the low-quality adapter regime while
+keeping some diversity gain and preserving persona fidelity.</p>
+<p><strong>Finding 4: Prompt-only remains a strong baseline.</strong>
+This is important and should not be hidden. Prompt-only conditioning
+nearly matches or exceeds MoP+DivPO v2 on quality and utility. The
+trained system must therefore justify itself through distinctness,
+controllability, reproducibility, and future scalability, not just
+through one aggregate score.</p>
+<h2 id="discussion">6. Discussion</h2>
+<p>The most important lesson is that the project should not present
+diversity as a single scalar objective. There are at least three
+different forms of diversity in the results. Lexical diversity is
+measured by Distinct-1/2 and Self-BLEU. Semantic diversity is measured
+by SBERT cosine. Cognitive-style diversity is measured by persona
+distinctness and persona fidelity. A method can improve one while
+damaging another.</p>
+<p>The SFT variants appear to increase semantic spread dramatically, but
+they also degrade quality. One interpretation is that the small base
+model and limited adapter capacity can move into more unusual regions of
+the output space, but not always with enough control to remain useful.
+This is consistent with the broader post-training trade-off: increasing
+diversity without a strong quality constraint can produce outputs that
+are different for the wrong reason.</p>
+<p>DivPO v2 is conceptually better aligned with the task than the first
+DivPO implementation. Counter-argument generation does not reward
+semantic similarity to the prompt in the same way that summarization or
+answer generation might. A counter-argument should remain relevant, but
+it may explicitly reject or reframe the premise. Dropping
+prompt-response cosine from the quality proxy was therefore a justified
+methodological correction.</p>
+<p>The current evidence supports a paper framed around the
+diversity-quality frontier. The x-axis is diversity, the y-axis is
+usability. Base sits in a low-to-middle region. Prompt-only is high
+usability but limited trained specialization. SFT adapters move toward
+high diversity but low usability. DivPO v2 moves back toward the
+high-usability region while retaining a measurable diversity signal.
+This is a coherent story and a more credible one than claiming the
+proposed method is best on every metric.</p>
+<h2 id="limitations">7. Limitations</h2>
+<p>The first limitation is model scale. Qwen2.5-0.5B-Instruct is useful
+for rapid experimentation, but it is small. Some weaknesses of SFT and
+DivPO may reflect limited base-model capacity rather than limitations of
+the architecture itself.</p>
+<p>The second limitation is judge reliability. The calibration sample
+shows acceptable agreement for quality and persona fidelity but weak
+agreement for novelty. Novelty claims should therefore be treated as
+directional and supported with automated metrics and examples.</p>
+<p>The third limitation is evaluation scope. The project evaluates
+counter-argument generation, not a full human writing workflow.
+Pre-writing remains the motivation, but the current paper should not
+claim measured improvements in final human writing quality.</p>
+<p>The fourth limitation is dataset alignment. The persona datasets are
+chosen for cognitive fingerprints, but they are not all from the same
+domain. This helps style separation but may introduce domain artifacts.
+DivPO v2 partly addresses this by using a shared prompt pool, but future
+work should build larger and cleaner counter-argument datasets for all
+personas.</p>
+<h2 id="conclusion">8. Conclusion</h2>
+<p>This project began as a proposal for a pre-writing ideation system
+combining Mixture of Persona and Diverse Preference Optimization. The
+completed results support a sharper and more defensible paper: a study
+of diverse counter-argument generation using cognitive persona adapters
+and DivPO training.</p>
+<p>The strongest result is persona distinctness. Four separate LoRA
+adapters produce clearly separated output distributions. The second
+result is the diversity-quality trade-off. SFT-style adapter methods
+create high diversity but low quality and utility. The third result is
+the balanced role of DivPO v2. It does not win every metric, but it
+gives the most coherent final version of the proposed architecture:
+persona-conditioned, empirically distinct, quality-preserving, and
+modestly more diverse than prompt-only on several metrics.</p>
+<p>The paper should emphasize this balanced conclusion. A credible
+negative or mixed result is stronger than an exaggerated positive one.
+The defensible contribution is not that MoP+DivPO solves LLM monoculture
+completely, but that it exposes how persona specialization and
+diversity-aware preference optimization interact at small scale, and it
+identifies DivPO v2 as a promising direction for future larger-model and
+human-writer evaluation.</p>
+<h2 id="references">References</h2>
+<ol type="1">
+<li>A. R. Doshi and O. P. Hauser, “Generative AI enhances individual
+creativity but reduces the collective diversity of novel content,”
+<em>Science Advances</em>, 2024.
+https://www.science.org/doi/10.1126/sciadv.adn5290</li>
+<li>V. Padmakumar and H. He, “Does Writing with Language Models Reduce
+Content Diversity?,” ICLR, 2024. https://arxiv.org/abs/2309.05196</li>
+<li>F. Wu, E. Black, and V. Chandrasekaran, “Generative Monoculture in
+Large Language Models,” ICLR, 2025.
+https://arxiv.org/abs/2407.02209</li>
+<li>R. Kirk et al., “Understanding the Effects of RLHF on LLM
+Generalisation and Diversity,” ICLR, 2024.
+https://proceedings.iclr.cc/paper_files/paper/2024/hash/5a68d05006d5b05dd9463dd9c0219db0-Abstract-Conference.html</li>
+<li>J. Lanchantin et al., “Diverse Preference Optimization,” arXiv,
+2025. https://arxiv.org/abs/2501.18101</li>
+<li>E. J. Hu et al., “LoRA: Low-Rank Adaptation of Large Language
+Models,” ICLR, 2022. https://openreview.net/forum?id=nZeVKeeFYf9</li>
+<li>T. Dettmers, A. Pagnoni, A. Holtzman, and L. Zettlemoyer, “QLoRA:
+Efficient Finetuning of Quantized LLMs,” NeurIPS, 2023.
+https://arxiv.org/abs/2305.14314</li>
+<li>D. Li et al., “MixLoRA: Enhancing Large Language Model Fine-Tuning
+with LoRA-based Mixture of Experts,” arXiv, 2024.
+https://arxiv.org/abs/2404.15159</li>
+<li>J. Zhang et al., “Conversations Gone Awry: Detecting Early Signs of
+Conversational Failure,” ACL, 2018.
+https://arxiv.org/abs/1805.05345</li>
+<li>S. Gretz et al., “A Large-scale Dataset for Argument Quality
+Ranking: Construction and Analysis,” AAAI, 2020.
+https://arxiv.org/abs/1911.11408</li>
+<li>Qwen Team, “Qwen2.5-0.5B-Instruct,” Hugging Face model card, 2024.
+https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct</li>
+</ol>
+</body>
+</html>

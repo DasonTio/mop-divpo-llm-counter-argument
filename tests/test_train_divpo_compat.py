@@ -15,6 +15,9 @@ class TrainDivPOCompatibilityTests(unittest.TestCase):
         self.assertEqual(args.grad_accum, 32)
         self.assertEqual(args.max_length, 384)
         self.assertIsNone(args.dataset_dir)
+        self.assertEqual(args.base_model, "Qwen/Qwen2.5-0.5B-Instruct")
+        self.assertEqual(args.sft_stage, "sft")
+        self.assertIsNone(args.sft_adapter_dir)
         self.assertEqual(args.output_stage, "divpo")
 
     def test_can_target_local_dataset_and_new_output_stage(self):
@@ -24,13 +27,22 @@ class TrainDivPOCompatibilityTests(unittest.TestCase):
                 "systems_thinker",
                 "--dataset-dir",
                 "data/processed/divpo_v2",
+                "--base-model",
+                "Qwen/Qwen2.5-1.5B-Instruct",
+                "--sft-stage",
+                "sft_1p5b",
+                "--sft-adapter-dir",
+                "outputs/adapters",
                 "--output-stage",
-                "divpo_v2",
+                "divpo_v2_1p5b",
             ]
         )
 
         self.assertEqual(args.dataset_dir, "data/processed/divpo_v2")
-        self.assertEqual(args.output_stage, "divpo_v2")
+        self.assertEqual(args.base_model, "Qwen/Qwen2.5-1.5B-Instruct")
+        self.assertEqual(args.sft_stage, "sft_1p5b")
+        self.assertEqual(args.sft_adapter_dir, "outputs/adapters")
+        self.assertEqual(args.output_stage, "divpo_v2_1p5b")
 
     def test_split_supported_kwargs_keeps_supported_config_args(self):
         class ModernDPOConfig:

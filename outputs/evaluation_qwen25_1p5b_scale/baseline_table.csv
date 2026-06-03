@@ -1,0 +1,5 @@
+method,self_bleu,distinct_1,distinct_2,sbert_cosine
+base,0.0993,0.4861,0.8894,0.7721
+prompt_only,0.0410,0.5747,0.9347,0.7104
+mop_sft,0.0223,0.5774,0.9527,0.5112
+mop_divpo_v2,0.0483,0.5612,0.9299,0.7065

@@ -1,0 +1,3 @@
+method,self_bleu,distinct_1,distinct_2,sbert_cosine
+base,0.1673,0.4197,0.8307,0.8297
+prompt_only,0.0759,0.4866,0.8737,0.6903
