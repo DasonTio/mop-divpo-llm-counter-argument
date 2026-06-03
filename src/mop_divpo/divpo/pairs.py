@@ -50,6 +50,7 @@ def select_pair(
     rarity_weight: float = 0.6,
     persona: str = "",
     candidates_per_prompt: int = 4,
+    quality_override: Optional[list[float]] = None,
     _prompt_emb=None,
     _cand_embs=None,
 ) -> Optional[DivPORecord]:
@@ -59,16 +60,28 @@ def select_pair(
     rejected = lowest combined score among quality-eligible candidates
     Returns None if fewer than 2 eligible candidates.
     Pass _prompt_emb/_cand_embs (pre-computed numpy arrays) to skip encode calls.
+
+    quality_override: per-candidate quality in [0, 1] from a reward model. When
+    provided it replaces the heuristic `score_quality` — this is the ArmoRM
+    anchor path that restores DivPO's "rare AND good" guarantee.
     """
     if len(candidates) < 2:
         return None
+    if quality_override is not None and len(quality_override) != len(candidates):
+        raise ValueError(
+            f"quality_override length {len(quality_override)} != "
+            f"candidates length {len(candidates)}"
+        )
 
     scored: list[ScoredCandidate] = []
     for i, cand in enumerate(candidates):
         others = [c for j, c in enumerate(candidates) if j != i]
         cand_emb = _cand_embs[i] if _cand_embs is not None else None
         other_embs = [_cand_embs[j] for j in range(len(candidates)) if j != i] if _cand_embs is not None else None
-        q = score_quality(prompt, cand, embedder, _prompt_emb=_prompt_emb, _response_emb=cand_emb)
+        if quality_override is not None:
+            q = quality_override[i]
+        else:
+            q = score_quality(prompt, cand, embedder, _prompt_emb=_prompt_emb, _response_emb=cand_emb)
         r = score_rarity(cand, others, embedder, _response_emb=cand_emb, _other_embs=other_embs)
         combined = quality_weight * q + rarity_weight * r
         scored.append(ScoredCandidate(text=cand, quality=q, rarity=r, combined=combined))
@@ -100,6 +113,7 @@ def select_pair(
             "min_quality": min_quality,
             "min_rarity_margin": min_rarity_margin,
             "candidates_per_prompt": candidates_per_prompt,
+            "quality_source": "reward_model" if quality_override is not None else "heuristic",
         },
     )
 
@@ -114,11 +128,16 @@ def select_pairs_batch(
     rarity_weight: float = 0.6,
     persona: str = "",
     candidates_per_prompt: int = 4,
+    quality_scorer=None,
 ) -> list[Optional[DivPORecord]]:
     """Batch version of select_pair — one embedder.encode call for all prompts.
 
     Encodes all prompts + candidates together, then calls select_pair with
     pre-computed embeddings. 10-20x faster than calling select_pair per prompt.
+
+    quality_scorer: optional reward-model scorer (see divpo.reward_quality). When
+    provided, quality is scored per-persona pool by the reward model instead of
+    the heuristic; rarity stays within-persona (this is the v1 path).
     """
     import numpy as np
 
@@ -136,6 +155,9 @@ def select_pairs_batch(
     for prompt, candidates, offset in zip(prompts, candidates_batch, offsets):
         prompt_emb = all_embs[offset]
         cand_embs = list(all_embs[offset + 1: offset + 1 + len(candidates)])
+        quality_override = (
+            quality_scorer.score_batch(prompt, candidates) if quality_scorer is not None else None
+        )
         results.append(select_pair(
             prompt=prompt,
             candidates=candidates,
@@ -146,6 +168,7 @@ def select_pairs_batch(
             rarity_weight=rarity_weight,
             persona=persona,
             candidates_per_prompt=candidates_per_prompt,
+            quality_override=quality_override,
             _prompt_emb=prompt_emb,
             _cand_embs=cand_embs,
         ))
@@ -161,6 +184,7 @@ def select_pairs_cross_persona_batch(
     quality_weight: float = 0.5,
     rarity_weight: float = 0.5,
     candidates_per_prompt: int = 4,
+    quality_scorer=None,
 ) -> dict[str, list[Optional[DivPORecord]]]:
     """Cross-persona DivPO pair selection (v2).
 
@@ -170,12 +194,16 @@ def select_pairs_cross_persona_batch(
     signal with the cross-persona SBERT-cosine metric used at evaluation time.
 
     Quality uses include_relevance=False: prompt-response cosine penalises
-    good counter-arguments (which must semantically oppose the prompt).
+    good counter-arguments (which must semantically oppose the prompt). When
+    quality_scorer is provided, the heuristic is replaced by the reward model
+    scored over the FULL cross-persona pool (same scope as rarity).
 
     Args:
         prompts: shared prompt list (must be the same order for all personas).
         candidates_per_persona: {persona_id: [[cands per prompt_0], [cands per prompt_1], ...]}.
         embedder: SentenceTransformer instance.
+        quality_scorer: optional reward-model scorer (see divpo.reward_quality);
+            None falls back to the heuristic floor.
 
     Returns:
         {persona_id: [Optional[DivPORecord] per prompt]}.
@@ -207,6 +235,12 @@ def select_pairs_cross_persona_batch(
         prompt_emb = all_embs[0]
         cand_embs = list(all_embs[1:])  # aligned with all_cands
 
+        # Reward-model quality over the FULL cross-persona pool (one call per
+        # prompt); indexed by global candidate position below.
+        pool_quality = (
+            quality_scorer.score_batch(prompt, all_cands) if quality_scorer is not None else None
+        )
+
         for persona in persona_ids:
             start, end = persona_slices[persona]
             persona_cands = all_cands[start:end]
@@ -219,13 +253,16 @@ def select_pairs_cross_persona_batch(
             scored: list[ScoredCandidate] = []
             for local_i, (cand, cand_emb) in enumerate(zip(persona_cands, persona_embs)):
                 global_i = start + local_i
-                # Quality: no relevance term (see module docstring).
-                q = score_quality(
-                    prompt, cand, embedder,
-                    include_relevance=False,
-                    _prompt_emb=prompt_emb,
-                    _response_emb=cand_emb,
-                )
+                if pool_quality is not None:
+                    q = pool_quality[global_i]
+                else:
+                    # Quality: no relevance term (see module docstring).
+                    q = score_quality(
+                        prompt, cand, embedder,
+                        include_relevance=False,
+                        _prompt_emb=prompt_emb,
+                        _response_emb=cand_emb,
+                    )
                 # Rarity: against ALL candidates from ALL personas (cross-persona).
                 other_embs = [e for j, e in enumerate(cand_embs) if j != global_i]
                 r = score_rarity(
@@ -269,6 +306,7 @@ def select_pairs_cross_persona_batch(
                     "min_rarity_margin": min_rarity_margin,
                     "candidates_per_prompt": candidates_per_prompt,
                     "cross_persona": True,
+                    "quality_source": "reward_model" if pool_quality is not None else "heuristic",
                 },
             ))
 

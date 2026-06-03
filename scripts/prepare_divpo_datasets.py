@@ -27,6 +27,22 @@ from mop_divpo.divpo.pairs import select_pair, select_pairs_batch, select_pairs_
 PERSONA_IDS = ["contrarian", "systems_thinker", "cross_domain_analogist", "minimalist"]
 
 
+def _build_quality_scorer(args, token: str):
+    """Reward-model quality floor (ArmoRM) or None for the heuristic.
+
+    Lazy-loads on first scoring call. ArmoRM is ~8B (bf16 ~16GB): on the v2
+    (--cross-persona) path the persona LLM is already unloaded before scoring,
+    so a single 16GB GPU is fine; the v1 path interleaves generation+scoring, so
+    pair it with --quality-scorer armorm only on a large GPU (A100).
+    """
+    if args.quality_scorer == "armorm":
+        from mop_divpo.divpo.reward_quality import RewardModelScorer
+
+        print(f"  Quality floor: reward model ({args.reward_model})", flush=True)
+        return RewardModelScorer(model_id=args.reward_model, token=token or None)
+    return None
+
+
 def _require_adapters() -> None:
     from mop_divpo.training_env import check_torchao_compatibility
 
@@ -297,6 +313,7 @@ def run_persona(persona: str, args: argparse.Namespace, token: str) -> None:
         embedder_device = "cpu"
     print(f"  Embedder device: {embedder_device}", flush=True)
     embedder = SentenceTransformer("all-MiniLM-L6-v2", device=embedder_device)
+    quality_scorer = _build_quality_scorer(args, token)
 
     records: list[dict] = []
     skipped = 0
@@ -353,6 +370,7 @@ def run_persona(persona: str, args: argparse.Namespace, token: str) -> None:
             rarity_weight=args.rarity_weight,
             persona=persona,
             candidates_per_prompt=args.candidate_count,
+            quality_scorer=quality_scorer,
         )
 
         for pair in pairs:
@@ -469,6 +487,7 @@ def run_cross_persona(args: argparse.Namespace, token: str) -> None:
     n_gpu = torch.cuda.device_count()
     embedder_device = "cuda:0" if n_gpu >= 1 else "cpu"
     embedder = SentenceTransformer("all-MiniLM-L6-v2", device=embedder_device)
+    quality_scorer = _build_quality_scorer(args, token)
     print("  Cross-persona pair selection...", flush=True)
 
     results = select_pairs_cross_persona_batch(
@@ -480,6 +499,7 @@ def run_cross_persona(args: argparse.Namespace, token: str) -> None:
         quality_weight=args.quality_weight,
         rarity_weight=args.rarity_weight,
         candidates_per_prompt=args.candidate_count,
+        quality_scorer=quality_scorer,
     )
 
     # ── Phase 3: Write ────────────────────────────────────────────────────────
@@ -539,6 +559,14 @@ def main() -> None:
     parser.add_argument("--prompt-pool", default="data/processed/sft")
     parser.add_argument("--output-dir", default="data/processed/divpo")
     parser.add_argument("--base-model", default="Qwen/Qwen2.5-0.5B-Instruct")
+    parser.add_argument("--quality-scorer", choices=["heuristic", "armorm"], default="heuristic",
+                        help="Quality floor for pair selection. 'heuristic' = cosine/length "
+                             "(legacy); 'armorm' = trained reward model, the DivPO-faithful "
+                             "anchor (restores the 'rare AND good' guarantee). With armorm, "
+                             "min-quality acts as a relative floor (fraction of the pool's "
+                             "reward range).")
+    parser.add_argument("--reward-model", default="RLHFlow/ArmoRM-Llama3-8B-v0.1",
+                        help="HF id of the reward model used when --quality-scorer armorm.")
     parser.add_argument("--min-quality", type=float, default=0.35)
     parser.add_argument("--min-rarity-margin", type=float, default=0.0)
     parser.add_argument("--quality-weight", type=float, default=0.4)
