@@ -12,7 +12,9 @@ Four cognitive personas: `contrarian`, `systems_thinker`, `cross_domain_analogis
 
 Python 3.12, virtualenv at `.venv/`. Activate: `source .venv/bin/activate`.
 
-The installable package is `src/mop_divpo/` (not yet scaffolded — see research plan §5). Exploratory scripts use `src/` directly with `PYTHONPATH=src`.
+The installable package is `src/mop_divpo/`. Scripts run with `PYTHONPATH=src`. The
+full pipeline (data → SFT → DivPO → evaluation) is implemented and has been run; final
+results and report are in `outputs/` and `paper/`. See `README.md` for the public overview.
 
 ## Project Structure
 
@@ -68,12 +70,13 @@ Per `docs/research-plan.md` (plan date 2026-05-25):
 
 | Phase | Goal | Status |
 |---|---|---|
-| 1 | Persona distinctness validation (SBERT 4×4 matrix) | TODO |
-| 2 | LLM-as-judge framework (`src/mop_divpo/eval/llm_judge.py`) | TODO |
-| 3 | Baseline evaluation table (5 methods × 7 metrics) | TODO |
-| 4 | Paper scoping + drafting | TODO |
+| 1 | Persona distinctness validation (SBERT 4×4 matrix) | DONE — Table 4.1 |
+| 2 | LLM-as-judge framework (`src/mop_divpo/eval/llm_judge.py`) | DONE — Tables 4.2–4.3 |
+| 3 | Baseline evaluation table (6 methods × metrics) + ArmoRM/BERTScore/significance | DONE — Tables 4.4–4.6 |
+| 4 | Paper scoping + drafting | DONE — `paper/MoP-DivPO-Counter-Argument-Report.pdf` |
 
-**Critical path:** Phase 1 gates everything. Run `scripts/experiment_persona_distinctness.py` first.
+All phases complete; results in `outputs/` (see `outputs/README.md`). Scaling validation
+on Qwen2.5-1.5B/3B confirms findings are not a 0.5B artifact.
 
 ## Evaluation
 

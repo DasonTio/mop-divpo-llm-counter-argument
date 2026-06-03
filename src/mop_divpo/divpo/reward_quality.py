@@ -63,6 +63,7 @@ class RewardModelScorer:
         *,
         device: str = "cuda",
         dtype: str = "bfloat16",
+        load_in_4bit: bool = False,
         max_length: int = 2048,
         normalize: bool = True,
         token: str | None = None,
@@ -70,6 +71,7 @@ class RewardModelScorer:
         self.model_id = model_id
         self.device = device
         self.dtype = dtype
+        self.load_in_4bit = load_in_4bit
         self.max_length = max_length
         self.normalize = normalize
         self.token = token
@@ -86,12 +88,23 @@ class RewardModelScorer:
         self._tokenizer = AutoTokenizer.from_pretrained(
             self.model_id, use_fast=True, token=self.token
         )
-        self._model = AutoModelForSequenceClassification.from_pretrained(
-            self.model_id,
-            device_map=self.device,
+
+        kwargs: dict = dict(
             trust_remote_code=True,
-            torch_dtype=torch_dtype,
             token=self.token,
+        )
+        if self.load_in_4bit:
+            # 4-bit via bitsandbytes: ~5GB VRAM vs ~16GB for bf16.
+            # Required when VRAM < 16GB (e.g. RTX 5060 Ti 15.9GB).
+            from transformers import BitsAndBytesConfig
+            kwargs["quantization_config"] = BitsAndBytesConfig(load_in_4bit=True)
+            kwargs["device_map"] = "auto"
+        else:
+            kwargs["device_map"] = self.device
+            kwargs["torch_dtype"] = torch_dtype
+
+        self._model = AutoModelForSequenceClassification.from_pretrained(
+            self.model_id, **kwargs
         )
         self._model.eval()
 

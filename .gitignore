@@ -1,8 +1,25 @@
+# secrets / envs
 .env
 .venv
 .claude
+
+# python
 __pycache__/
 *.pyc
 *.pyo
-outputs/adapters/
 *.egg-info/
+.pytest_cache/
+
+# os
+.DS_Store
+
+# trained adapters (live on HuggingFace Hub, see README)
+outputs/adapters/
+
+# run artifacts (process logs, state files) — not results
+outputs/scaling_run/
+*.log
+
+# regenerable judge/reward caches (large; rebuilt from scripts)
+outputs/**/judge_cache.json
+outputs/**/calibration_cache.json
